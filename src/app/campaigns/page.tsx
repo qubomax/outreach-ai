@@ -41,49 +41,49 @@ export default function CampaignsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Campaigns</h1>
-        <p className="text-zinc-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-slate-900">Campaigns</h1>
+        <p className="text-slate-500 text-sm mt-1">
           Performance data pulled from Instantly.ai
         </p>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
               <Mail className="w-3.5 h-3.5" /> Avg Open Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">54%</p>
+            <p className="text-3xl font-bold text-slate-900">54%</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
               <MousePointerClick className="w-3.5 h-3.5" /> Avg Click Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">13%</p>
+            <p className="text-3xl font-bold text-slate-900">13%</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
               <Reply className="w-3.5 h-3.5" /> Avg Reply Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-emerald-400">10%</p>
+            <p className="text-3xl font-bold text-emerald-600">10%</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Campaign list */}
-      <div className="rounded-xl border border-zinc-800 overflow-hidden">
-        <div className="grid grid-cols-[1fr_80px_80px_80px_80px_100px] gap-4 px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs font-medium text-zinc-500 uppercase tracking-wide">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div className="grid grid-cols-[1fr_80px_80px_80px_80px_100px] gap-4 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500 uppercase tracking-wide">
           <div>Campaign</div>
           <div className="text-center">Sent</div>
           <div className="text-center">Opens</div>
@@ -95,24 +95,24 @@ export default function CampaignsPage() {
         {DUMMY_CAMPAIGNS.map((c) => (
           <div
             key={c.id}
-            className="grid grid-cols-[1fr_80px_80px_80px_80px_100px] gap-4 px-4 py-3.5 border-b border-zinc-800 last:border-0 hover:bg-zinc-900/60 items-center"
+            className="grid grid-cols-[1fr_80px_80px_80px_80px_100px] gap-4 px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 items-center transition-colors"
           >
             <div>
-              <p className="text-sm font-medium text-white">{c.name}</p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-sm font-medium text-slate-900">{c.name}</p>
+              <p className="text-xs text-slate-400">
                 {c.prospects} prospects · Created {c.createdAt}
               </p>
             </div>
-            <div className="text-center text-sm text-zinc-300">{c.sent}</div>
-            <div className="text-center text-sm text-zinc-300">{c.openRate}</div>
-            <div className="text-center text-sm text-zinc-300">{c.clickRate}</div>
-            <div className="text-center text-sm font-medium text-emerald-400">{c.replyRate}</div>
+            <div className="text-center text-sm text-slate-600">{c.sent}</div>
+            <div className="text-center text-sm text-slate-600">{c.openRate}</div>
+            <div className="text-center text-sm text-slate-600">{c.clickRate}</div>
+            <div className="text-center text-sm font-medium text-emerald-600">{c.replyRate}</div>
             <div>
               <span
                 className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   c.status === "active"
-                    ? "bg-emerald-900 text-emerald-300"
-                    : "bg-zinc-700 text-zinc-400"
+                    ? "bg-emerald-50 text-emerald-600"
+                    : "bg-slate-100 text-slate-500"
                 }`}
               >
                 {c.status === "active" ? "Active" : "Completed"}

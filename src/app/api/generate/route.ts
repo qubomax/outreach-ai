@@ -1,0 +1,79 @@
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { prospects, emailSequences } from '@/lib/db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
+import { generateBrief } from '@/lib/agents/research-agent';
+import { generateSequence } from '@/lib/agents/sequence-agent';
+import { DEV_USER_ID } from '@/lib/dev-user';
+
+// Hardcoded for now — Week 2 will pull from users table (settings page)
+const SENDER_NAME = 'Alex';
+const SENDER_COMPANY = 'outreach-ai';
+const VALUE_PROP =
+  'We help B2B sales teams send hyper-personalized cold emails at scale — automatically researching each prospect and generating a custom 3-step sequence per contact.';
+
+export async function POST() {
+  const eligible = await db
+    .select()
+    .from(prospects)
+    .where(
+      and(
+        eq(prospects.userId, DEV_USER_ID),
+        eq(prospects.scrapeStatus, 'scraped'),
+        eq(prospects.generateStatus, 'pending')
+      )
+    );
+
+  if (eligible.length === 0) {
+    return NextResponse.json({ generated: 0 });
+  }
+
+  // Mark all as generating immediately so the UI updates
+  await db
+    .update(prospects)
+    .set({ generateStatus: 'generating', updatedAt: new Date() })
+    .where(inArray(prospects.id, eligible.map((p) => p.id)));
+
+  // Run all in parallel — Claude handles concurrent requests fine
+  let generated = 0;
+  await Promise.all(
+    eligible.map(async (p) => {
+      try {
+        const brief = await generateBrief(p.scrapedText!);
+
+        await db
+          .update(prospects)
+          .set({ prospectBrief: brief, updatedAt: new Date() })
+          .where(eq(prospects.id, p.id));
+
+        const steps = await generateSequence(brief, SENDER_NAME, SENDER_COMPANY, VALUE_PROP);
+
+        await db.insert(emailSequences).values(
+          steps.map((s) => ({
+            prospectId: p.id,
+            userId: DEV_USER_ID,
+            stepNumber: s.stepNumber,
+            subject: s.subject,
+            body: s.body,
+            delayDays: s.delayDays,
+          }))
+        );
+
+        await db
+          .update(prospects)
+          .set({ generateStatus: 'generated', updatedAt: new Date() })
+          .where(eq(prospects.id, p.id));
+
+        generated++;
+      } catch (err) {
+        console.error(`Generation failed for prospect ${p.id}:`, err);
+        await db
+          .update(prospects)
+          .set({ generateStatus: 'failed', updatedAt: new Date() })
+          .where(eq(prospects.id, p.id));
+      }
+    })
+  );
+
+  return NextResponse.json({ generated });
+}

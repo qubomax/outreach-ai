@@ -43,37 +43,37 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode; colo
   pending: {
     label: "Pending",
     icon: <Circle className="w-3.5 h-3.5" />,
-    color: "text-zinc-400",
+    color: "text-slate-400",
   },
   scraping: {
     label: "Scraping website...",
     icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
-    color: "text-yellow-400",
+    color: "text-amber-500",
   },
   scraped: {
     label: "Scraped — ready to generate",
     icon: <CheckCircle2 className="w-3.5 h-3.5" />,
-    color: "text-zinc-300",
+    color: "text-slate-500",
   },
   generating: {
     label: "Generating sequence...",
     icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
-    color: "text-blue-400",
+    color: "text-blue-500",
   },
   ready: {
     label: "Ready to push",
     icon: <CheckCircle2 className="w-3.5 h-3.5" />,
-    color: "text-emerald-400",
+    color: "text-emerald-600",
   },
   pushed: {
     label: "Pushed to Instantly",
     icon: <Send className="w-3.5 h-3.5" />,
-    color: "text-indigo-400",
+    color: "text-indigo-600",
   },
   failed: {
     label: "Failed",
     icon: <Circle className="w-3.5 h-3.5" />,
-    color: "text-red-400",
+    color: "text-red-500",
   },
 };
 
@@ -94,7 +94,7 @@ export default function ProspectsPage() {
     loadProspects();
   }, [loadProspects]);
 
-  // Single stable interval — checks Apify for scraping prospects, then kicks off the next pending one
+  // Single stable interval — scrape queue → generation pipeline
   useEffect(() => {
     const interval = setInterval(async () => {
       const res = await fetch("/api/prospects");
@@ -103,7 +103,7 @@ export default function ProspectsPage() {
 
       const scraping = all.filter((p) => p.scrapeStatus === "scraping");
 
-      // Trigger Apify status checks (updates DB in-place)
+      // Poll Apify for in-progress scrapes
       if (scraping.length > 0) {
         await Promise.all(scraping.map((p) => fetch(`/api/scrape/${p.id}`)));
       }
@@ -114,21 +114,29 @@ export default function ProspectsPage() {
       const fresh: Prospect[] = await freshRes.json();
       setProspects(fresh);
 
-      // If nothing is scraping, kick off the next pending prospect
       const isAnyScraping = fresh.some((p) => p.scrapeStatus === "scraping");
+      const isAnyGenerating = fresh.some((p) => p.generateStatus === "generating");
       const pendingIds = fresh
         .filter((p) => p.scrapeStatus === "pending" && p.websiteUrl)
         .map((p) => p.id);
+      const needsGeneration = fresh.some(
+        (p) => p.scrapeStatus === "scraped" && p.generateStatus === "pending"
+      );
 
       if (!isAnyScraping && pendingIds.length > 0) {
+        // Kick off next scrape in the queue
         await fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prospectIds: pendingIds }),
         });
-        // One more refresh to show the new "scraping" status
         const nextRes = await fetch("/api/prospects");
         if (nextRes.ok) setProspects(await nextRes.json());
+      } else if (!isAnyScraping && !isAnyGenerating && needsGeneration) {
+        // All scraping done — trigger Claude generation for scraped prospects
+        await fetch("/api/generate", { method: "POST" });
+        const genRes = await fetch("/api/prospects");
+        if (genRes.ok) setProspects(await genRes.json());
       }
     }, 5000);
 
@@ -184,8 +192,8 @@ export default function ProspectsPage() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Prospects</h1>
-          <p className="text-zinc-400 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-900">Prospects</h1>
+          <p className="text-slate-500 text-sm mt-1">
             {prospects.length} prospects · {readyCount} sequences ready
           </p>
         </div>
@@ -193,7 +201,7 @@ export default function ProspectsPage() {
           {pendingSelected.length > 0 && (
             <Button
               variant="outline"
-              className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30 gap-2"
+              className="border-amber-300 text-amber-600 hover:bg-amber-50 gap-2"
               onClick={() => startScraping(pendingSelected)}
             >
               <Zap className="w-4 h-4" />
@@ -203,14 +211,14 @@ export default function ProspectsPage() {
           {selected.length > 0 && (
             <Button
               variant="outline"
-              className="border-indigo-600 text-indigo-400 hover:bg-indigo-900/30 gap-2"
+              className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 gap-2"
             >
               <Send className="w-4 h-4" />
               Push {selected.length} to Instantly
             </Button>
           )}
           <Button
-            className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
           >
@@ -248,33 +256,33 @@ export default function ProspectsPage() {
         onClick={() => fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
           dragOver
-            ? "border-indigo-500 bg-indigo-900/20"
-            : "border-zinc-700 bg-zinc-900/30 hover:border-zinc-600"
+            ? "border-indigo-400 bg-indigo-50"
+            : "border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50"
         }`}
       >
-        <Upload className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
-        <p className="text-sm text-zinc-300 font-medium">
+        <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+        <p className="text-sm text-slate-700 font-medium">
           Drop your CSV here or{" "}
-          <span className="text-indigo-400">browse files</span>
+          <span className="text-indigo-600">browse files</span>
         </p>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           Required columns: name, email, company, website_url
         </p>
         {uploadError && (
-          <p className="text-xs text-red-400 mt-2">{uploadError}</p>
+          <p className="text-xs text-red-500 mt-2">{uploadError}</p>
         )}
       </div>
 
       {/* Prospect table */}
       {prospects.length > 0 && (
-        <div className="rounded-xl border border-zinc-800 overflow-hidden">
-          <div className="grid grid-cols-[32px_1fr_1fr_160px_120px_48px] gap-4 px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs font-medium text-zinc-500 uppercase tracking-wide">
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <div className="grid grid-cols-[32px_1fr_1fr_160px_120px_48px] gap-4 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500 uppercase tracking-wide">
             <div className="flex items-center">
               <input
                 type="checkbox"
                 checked={selected.length === prospects.length && prospects.length > 0}
                 onChange={toggleAll}
-                className="rounded border-zinc-600 bg-zinc-800 accent-indigo-500"
+                className="rounded border-slate-300 accent-indigo-600"
               />
             </div>
             <div>Prospect</div>
@@ -290,29 +298,29 @@ export default function ProspectsPage() {
             return (
               <div
                 key={p.id}
-                className="grid grid-cols-[32px_1fr_1fr_160px_120px_48px] gap-4 px-4 py-3 border-b border-zinc-800 last:border-0 hover:bg-zinc-900/60 items-center"
+                className="grid grid-cols-[32px_1fr_1fr_160px_120px_48px] gap-4 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 items-center transition-colors"
               >
                 <div>
                   <input
                     type="checkbox"
                     checked={selected.includes(p.id)}
                     onChange={() => toggle(p.id)}
-                    className="rounded border-zinc-600 bg-zinc-800 accent-indigo-500"
+                    className="rounded border-slate-300 accent-indigo-600"
                   />
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-white">
+                  <p className="text-sm font-medium text-slate-900">
                     {p.firstName} {p.lastName}
                   </p>
-                  <p className="text-xs text-zinc-500">{p.email}</p>
+                  <p className="text-xs text-slate-400">{p.email}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-zinc-300">{p.company}</p>
+                  <p className="text-sm text-slate-700">{p.company}</p>
                   {p.websiteUrl && (
                     <a href={p.websiteUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-3 h-3 text-zinc-600 hover:text-zinc-400" />
+                      <ExternalLink className="w-3 h-3 text-slate-400 hover:text-slate-600" />
                     </a>
                   )}
                 </div>
@@ -322,7 +330,7 @@ export default function ProspectsPage() {
                   {cfg.label}
                 </div>
 
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-slate-400">
                   {new Date(p.createdAt).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
@@ -335,7 +343,7 @@ export default function ProspectsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="w-8 h-8 p-0 text-zinc-500 hover:text-white"
+                        className="w-8 h-8 p-0 text-slate-400 hover:text-slate-700"
                       >
                         <ChevronRight className="w-4 h-4" />
                       </Button>

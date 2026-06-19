@@ -24,24 +24,24 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col h-screen border-r border-zinc-800 bg-zinc-950 px-3 py-5">
+    <aside className="w-56 shrink-0 flex flex-col h-screen border-r border-slate-200 bg-white px-3 py-5">
       <div className="flex items-center gap-2 px-2 mb-8">
-        <Zap className="w-5 h-5 text-indigo-400" />
-        <span className="font-semibold text-white text-sm tracking-tight">
-          outreach<span className="text-indigo-400">-ai</span>
+        <Zap className="w-5 h-5 text-indigo-500" />
+        <span className="font-semibold text-slate-900 text-sm tracking-tight">
+          outreach<span className="text-indigo-500">-ai</span>
         </span>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5">
         {NAV.map(({ label, href, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             className={cn(
-              "flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors",
+              "flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors",
               pathname === href
                 ? "bg-indigo-600 text-white"
-                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             )}
           >
             <Icon className="w-4 h-4 shrink-0" />
@@ -50,12 +50,12 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto px-2 py-3 rounded-md bg-zinc-900 border border-zinc-800">
-        <p className="text-xs text-zinc-500 mb-1">Plan</p>
-        <p className="text-sm font-medium text-white">Starter — $49/mo</p>
-        <p className="text-xs text-zinc-500 mt-1">7 / 200 prospects used</p>
-        <div className="mt-2 h-1 rounded-full bg-zinc-800">
-          <div className="h-1 rounded-full bg-indigo-500 w-[3.5%]" />
+      <div className="mt-auto px-2.5 py-3 rounded-lg bg-slate-50 border border-slate-200">
+        <p className="text-xs text-slate-400 mb-1">Plan</p>
+        <p className="text-sm font-semibold text-slate-900">Starter — $49/mo</p>
+        <p className="text-xs text-slate-500 mt-1">7 / 200 prospects used</p>
+        <div className="mt-2 h-1.5 rounded-full bg-slate-200">
+          <div className="h-1.5 rounded-full bg-indigo-500 w-[3.5%]" />
         </div>
       </div>
     </aside>

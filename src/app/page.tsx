@@ -27,13 +27,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-zinc-700 text-zinc-300",
-  scraping: "bg-yellow-900 text-yellow-300",
-  scraped: "bg-zinc-700 text-zinc-300",
-  generating: "bg-blue-900 text-blue-300",
-  ready: "bg-emerald-900 text-emerald-300",
-  pushed: "bg-indigo-900 text-indigo-300",
-  failed: "bg-red-900 text-red-300",
+  pending: "bg-slate-100 text-slate-500",
+  scraping: "bg-amber-50 text-amber-600",
+  scraped: "bg-slate-100 text-slate-600",
+  generating: "bg-blue-50 text-blue-600",
+  ready: "bg-emerald-50 text-emerald-600",
+  pushed: "bg-indigo-50 text-indigo-600",
+  failed: "bg-red-50 text-red-500",
 };
 
 export default async function DashboardPage() {
@@ -50,63 +50,63 @@ export default async function DashboardPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-zinc-400 text-sm mt-1">Your outreach pipeline at a glance</p>
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <p className="text-slate-500 text-sm mt-1">Your outreach pipeline at a glance</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
               <Users className="w-3.5 h-3.5" /> Prospects
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">{total}</p>
+            <p className="text-3xl font-bold text-slate-900">{total}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
               <Mail className="w-3.5 h-3.5" /> Sequences Generated
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">{sequencesGenerated}</p>
+            <p className="text-3xl font-bold text-slate-900">{sequencesGenerated}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
               <Send className="w-3.5 h-3.5" /> Pushed to Instantly
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-white">—</p>
+            <p className="text-3xl font-bold text-slate-900">—</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 flex items-center gap-2">
+            <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
               <TrendingUp className="w-3.5 h-3.5" /> Avg Reply Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-zinc-500">—</p>
+            <p className="text-3xl font-bold text-slate-300">—</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 p-6 flex items-center justify-between">
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 flex items-center justify-between">
         <div>
-          <p className="font-medium text-white">Upload a new prospect list</p>
-          <p className="text-sm text-zinc-400 mt-0.5">CSV with name, email, company, website URL</p>
+          <p className="font-medium text-slate-900">Upload a new prospect list</p>
+          <p className="text-sm text-slate-500 mt-0.5">CSV with name, email, company, website URL</p>
         </div>
         <Link href="/prospects">
-          <Button className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2">
+          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm">
             Upload CSV <ArrowRight className="w-4 h-4" />
           </Button>
         </Link>
@@ -114,36 +114,36 @@ export default async function DashboardPage() {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-zinc-200">Recent Prospects</h2>
-          <Link href="/prospects" className="text-xs text-indigo-400 hover:text-indigo-300">
+          <h2 className="text-sm font-semibold text-slate-700">Recent Prospects</h2>
+          <Link href="/prospects" className="text-xs text-indigo-600 hover:text-indigo-700">
             View all
           </Link>
         </div>
 
         {recent.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 px-4 py-8 text-center text-sm text-zinc-500">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400">
             No prospects yet — upload a CSV to get started.
           </div>
         ) : (
-          <div className="rounded-xl border border-zinc-800 overflow-hidden">
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
             {recent.map((p, i) => {
               const status = getDisplayStatus(p);
               return (
                 <div
                   key={p.id}
                   className={`flex items-center justify-between px-4 py-3 ${
-                    i < recent.length - 1 ? "border-b border-zinc-800" : ""
+                    i < recent.length - 1 ? "border-b border-slate-100" : ""
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-900 flex items-center justify-center text-xs font-bold text-indigo-300">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">
                       {p.firstName[0]}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">
+                      <p className="text-sm font-medium text-slate-900">
                         {p.firstName} {p.lastName}
                       </p>
-                      <p className="text-xs text-zinc-500">{p.company}</p>
+                      <p className="text-xs text-slate-400">{p.company}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -152,13 +152,13 @@ export default async function DashboardPage() {
                     </span>
                     {status === "ready" && (
                       <Link href={`/sequences/${p.id}`}>
-                        <Button size="sm" variant="ghost" className="text-xs text-indigo-400 hover:text-indigo-300 h-7">
+                        <Button size="sm" variant="ghost" className="text-xs text-indigo-600 hover:text-indigo-700 h-7">
                           View sequence
                         </Button>
                       </Link>
                     )}
                     {(status === "scraping" || status === "generating") && (
-                      <Clock className="w-3.5 h-3.5 text-zinc-500 animate-pulse" />
+                      <Clock className="w-3.5 h-3.5 text-slate-400 animate-pulse" />
                     )}
                   </div>
                 </div>
