@@ -3,12 +3,19 @@ import { db } from '@/lib/db';
 import { prospects } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { startScrape } from '@/lib/apify';
-import { DEV_USER_ID } from '@/lib/dev-user';
+import { getAuthUserId } from '@/lib/auth';
 
 // POST /api/scrape  body: { prospectIds: number[] }
 // Only starts ONE Apify run — the next pending prospect.
 // The frontend triggers this again after each run completes to process the queue.
 export async function POST(req: NextRequest) {
+  let userId: string;
+  try {
+    userId = await getAuthUserId();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { prospectIds } = await req.json() as { prospectIds: number[] };
   const apiKey = process.env.APIFY_API_KEY!;
 
@@ -17,21 +24,19 @@ export async function POST(req: NextRequest) {
     .from(prospects)
     .where(inArray(prospects.id, prospectIds));
 
-  // Check if any run is already active (scraping) — if so, don't start another
   const alreadyScraping = rows.some((p) => p.scrapeStatus === 'scraping');
   if (alreadyScraping) {
     return NextResponse.json({ started: 0, queued: rows.filter((p) => p.scrapeStatus === 'pending').length });
   }
 
   const eligible = rows.filter(
-    (p) => p.userId === DEV_USER_ID && p.websiteUrl && p.scrapeStatus === 'pending'
+    (p) => p.userId === userId && p.websiteUrl && p.scrapeStatus === 'pending'
   );
 
   if (eligible.length === 0) {
     return NextResponse.json({ started: 0, queued: 0 });
   }
 
-  // Only start the first one
   const p = eligible[0];
 
   try {

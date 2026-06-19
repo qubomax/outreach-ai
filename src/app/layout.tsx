@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { ConditionalLayout } from "@/components/conditional-layout";
 import "./globals.css";
-import { Sidebar } from "@/components/sidebar";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -16,13 +17,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${geist.className} bg-slate-50 text-slate-900 antialiased`}>
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto p-8">{children}</main>
-        </div>
-      </body>
-    </html>
+    <ClerkProvider afterSignOutUrl="/sign-in">
+      <html lang="en">
+        <body className={`${geist.className} bg-slate-50 text-slate-900 antialiased`}>
+          <ConditionalLayout>{children}</ConditionalLayout>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

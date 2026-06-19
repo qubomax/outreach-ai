@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserButton } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   Users,
@@ -50,12 +51,18 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto px-2.5 py-3 rounded-lg bg-slate-50 border border-slate-200">
-        <p className="text-xs text-slate-400 mb-1">Plan</p>
-        <p className="text-sm font-semibold text-slate-900">Starter — $49/mo</p>
-        <p className="text-xs text-slate-500 mt-1">7 / 200 prospects used</p>
-        <div className="mt-2 h-1.5 rounded-full bg-slate-200">
-          <div className="h-1.5 rounded-full bg-indigo-500 w-[3.5%]" />
+      <div className="mt-auto space-y-3 pb-4">
+        <div className="px-2.5 py-2 flex items-center gap-2.5">
+          <UserButton />
+          <span className="text-xs text-slate-500">Account</span>
+        </div>
+        <div className="px-2.5 py-3 rounded-lg bg-slate-50 border border-slate-200">
+          <p className="text-xs text-slate-400 mb-1">Plan</p>
+          <p className="text-sm font-semibold text-slate-900">Starter — $49/mo</p>
+          <p className="text-xs text-slate-500 mt-1">7 / 200 prospects used</p>
+          <div className="mt-2 h-1.5 rounded-full bg-slate-200">
+            <div className="h-1.5 rounded-full bg-indigo-500 w-[3.5%]" />
+          </div>
         </div>
       </div>
     </aside>

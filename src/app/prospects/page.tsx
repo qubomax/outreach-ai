@@ -16,6 +16,7 @@ import Link from "next/link";
 
 type ScrapeStatus = "pending" | "scraping" | "scraped" | "failed";
 type GenerateStatus = "pending" | "generating" | "generated" | "failed";
+type PushStatus = "pending" | "pushed" | "failed" | null;
 
 interface Prospect {
   id: number;
@@ -26,10 +27,12 @@ interface Prospect {
   websiteUrl: string | null;
   scrapeStatus: ScrapeStatus;
   generateStatus: GenerateStatus;
+  pushStatus: PushStatus;
   createdAt: string;
 }
 
 function getDisplayStatus(p: Prospect): string {
+  if (p.pushStatus === "pushed") return "pushed";
   if (p.generateStatus === "generated") return "ready";
   if (p.generateStatus === "generating") return "generating";
   if (p.generateStatus === "failed") return "failed";
@@ -83,6 +86,7 @@ export default function ProspectsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [bulkPushing, setBulkPushing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadProspects = useCallback(async () => {
@@ -143,6 +147,27 @@ export default function ProspectsPage() {
     return () => clearInterval(interval);
   }, []); // Stable — no stale closure issues
 
+  const bulkPush = async () => {
+    const pushableIds = selected.filter((id) => {
+      const p = prospects.find((x) => x.id === id);
+      return p && getDisplayStatus(p) === "ready";
+    });
+    if (pushableIds.length === 0) return;
+    setBulkPushing(true);
+    await Promise.all(
+      pushableIds.map((id) =>
+        fetch("/api/instantly/push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prospectId: id }),
+        })
+      )
+    );
+    setBulkPushing(false);
+    await loadProspects();
+    setSelected([]);
+  };
+
   const startScraping = async (ids: number[]) => {
     await fetch("/api/scrape", {
       method: "POST",
@@ -186,6 +211,11 @@ export default function ProspectsPage() {
     return p?.scrapeStatus === "pending" && p?.websiteUrl;
   });
 
+  const readySelected = selected.filter((id) => {
+    const p = prospects.find((x) => x.id === id);
+    return p && getDisplayStatus(p) === "ready";
+  });
+
   const readyCount = prospects.filter((p) => getDisplayStatus(p) === "ready").length;
 
   return (
@@ -208,13 +238,19 @@ export default function ProspectsPage() {
               Scrape {pendingSelected.length} selected
             </Button>
           )}
-          {selected.length > 0 && (
+          {readySelected.length > 0 && (
             <Button
               variant="outline"
               className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 gap-2"
+              onClick={bulkPush}
+              disabled={bulkPushing}
             >
-              <Send className="w-4 h-4" />
-              Push {selected.length} to Instantly
+              {bulkPushing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {bulkPushing ? "Pushing..." : `Push ${readySelected.length} to Instantly`}
             </Button>
           )}
           <Button

@@ -1,7 +1,7 @@
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { prospects } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { DEV_USER_ID } from "@/lib/dev-user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Mail, Send, TrendingUp, ArrowRight, Clock } from "lucide-react";
@@ -37,10 +37,13 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
+  const { userId } = await auth();
+  if (!userId) return null;
+
   const allProspects = await db
     .select()
     .from(prospects)
-    .where(eq(prospects.userId, DEV_USER_ID))
+    .where(eq(prospects.userId, userId))
     .orderBy(desc(prospects.createdAt));
 
   const total = allProspects.length;

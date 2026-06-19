@@ -1,15 +1,38 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { prospects } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
-import { DEV_USER_ID } from '@/lib/dev-user';
+import { prospects, emailSequences } from '@/lib/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
+import { getAuthUserId } from '@/lib/auth';
 
 export async function GET() {
-  const rows = await db
-    .select()
-    .from(prospects)
-    .where(eq(prospects.userId, DEV_USER_ID))
-    .orderBy(desc(prospects.createdAt));
-
-  return NextResponse.json(rows);
+  try {
+    const userId = await getAuthUserId();
+    const rows = await db
+      .select({
+        id: prospects.id,
+        userId: prospects.userId,
+        firstName: prospects.firstName,
+        lastName: prospects.lastName,
+        email: prospects.email,
+        company: prospects.company,
+        websiteUrl: prospects.websiteUrl,
+        scrapeStatus: prospects.scrapeStatus,
+        generateStatus: prospects.generateStatus,
+        createdAt: prospects.createdAt,
+        pushStatus: emailSequences.pushStatus,
+      })
+      .from(prospects)
+      .leftJoin(
+        emailSequences,
+        and(
+          eq(emailSequences.prospectId, prospects.id),
+          eq(emailSequences.stepNumber, 1)
+        )
+      )
+      .where(eq(prospects.userId, userId))
+      .orderBy(desc(prospects.createdAt));
+    return NextResponse.json(rows);
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 }

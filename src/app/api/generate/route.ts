@@ -4,21 +4,27 @@ import { prospects, emailSequences } from '@/lib/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { generateBrief } from '@/lib/agents/research-agent';
 import { generateSequence } from '@/lib/agents/sequence-agent';
-import { DEV_USER_ID } from '@/lib/dev-user';
+import { getAuthUserId } from '@/lib/auth';
 
-// Hardcoded for now — Week 2 will pull from users table (settings page)
 const SENDER_NAME = 'Alex';
 const SENDER_COMPANY = 'outreach-ai';
 const VALUE_PROP =
   'We help B2B sales teams send hyper-personalized cold emails at scale — automatically researching each prospect and generating a custom 3-step sequence per contact.';
 
 export async function POST() {
+  let userId: string;
+  try {
+    userId = await getAuthUserId();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const eligible = await db
     .select()
     .from(prospects)
     .where(
       and(
-        eq(prospects.userId, DEV_USER_ID),
+        eq(prospects.userId, userId),
         eq(prospects.scrapeStatus, 'scraped'),
         eq(prospects.generateStatus, 'pending')
       )
@@ -28,13 +34,11 @@ export async function POST() {
     return NextResponse.json({ generated: 0 });
   }
 
-  // Mark all as generating immediately so the UI updates
   await db
     .update(prospects)
     .set({ generateStatus: 'generating', updatedAt: new Date() })
     .where(inArray(prospects.id, eligible.map((p) => p.id)));
 
-  // Run all in parallel — Claude handles concurrent requests fine
   let generated = 0;
   await Promise.all(
     eligible.map(async (p) => {
@@ -51,7 +55,7 @@ export async function POST() {
         await db.insert(emailSequences).values(
           steps.map((s) => ({
             prospectId: p.id,
-            userId: DEV_USER_ID,
+            userId,
             stepNumber: s.stepNumber,
             subject: s.subject,
             body: s.body,

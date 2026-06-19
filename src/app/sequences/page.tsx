@@ -1,11 +1,14 @@
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { prospects, emailSequences } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { DEV_USER_ID } from "@/lib/dev-user";
 import { ChevronRight, Mail } from "lucide-react";
 import Link from "next/link";
 
 export default async function SequencesPage() {
+  const { userId } = await auth();
+  if (!userId) return null;
+
   const rows = await db
     .select({
       id: prospects.id,
@@ -24,7 +27,7 @@ export default async function SequencesPage() {
     )
     .where(
       and(
-        eq(prospects.userId, DEV_USER_ID),
+        eq(prospects.userId, userId),
         eq(prospects.generateStatus, "generated")
       )
     )

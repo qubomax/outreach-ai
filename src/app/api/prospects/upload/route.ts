@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import { db } from '@/lib/db';
 import { prospects } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { DEV_USER_ID, ensureDevUser } from '@/lib/dev-user';
+import { ensureUser } from '@/lib/auth';
 
 type CsvRow = Record<string, string>;
 
@@ -22,6 +22,13 @@ function parseName(row: CsvRow): { firstName: string; lastName: string } {
 }
 
 export async function POST(req: NextRequest) {
+  let userId: string;
+  try {
+    userId = await ensureUser();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
 
@@ -52,13 +59,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  await ensureDevUser();
-
-  // Deduplicate against existing emails for this user
   const existing = await db
     .select({ email: prospects.email })
     .from(prospects)
-    .where(eq(prospects.userId, DEV_USER_ID));
+    .where(eq(prospects.userId, userId));
   const existingEmails = new Set(existing.map((r) => r.email.toLowerCase()));
 
   const newRows = valid.filter((row) => !existingEmails.has(row.email.trim().toLowerCase()));
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
       newRows.map((row) => {
         const { firstName, lastName } = parseName(row);
         return {
-          userId: DEV_USER_ID,
+          userId,
           firstName,
           lastName,
           email: row.email.trim(),
