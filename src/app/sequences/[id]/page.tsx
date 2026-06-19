@@ -1,7 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
-import { DUMMY_PROSPECTS } from "@/lib/dummy-data";
+import { use, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,15 +12,28 @@ import {
   X,
   ExternalLink,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
 interface EmailStep {
-  step: number;
+  id: number;
+  stepNumber: number;
   subject: string;
   body: string;
   delayDays: number;
 }
+
+interface Prospect {
+  id: number;
+  firstName: string;
+  lastName: string;
+  company: string;
+  websiteUrl: string | null;
+  prospectBrief: string | null;
+}
+
+const STEP_LABELS = ["Initial Email", "First Follow-up", "Final Follow-up"];
 
 export default function SequencePage({
   params,
@@ -29,42 +41,92 @@ export default function SequencePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const prospect = DUMMY_PROSPECTS.find((p) => p.id === id);
 
-  const [sequence, setSequence] = useState<EmailStep[]>(
-    prospect?.sequence ?? []
-  );
-  const [editingStep, setEditingStep] = useState<number | null>(null);
+  const [prospect, setProspect] = useState<Prospect | null>(null);
+  const [steps, setSteps] = useState<EmailStep[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<EmailStep | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [pushing, setPushing] = useState(false);
   const [pushed, setPushed] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
-  if (!prospect) {
+  useEffect(() => {
+    fetch(`/api/sequences/${id}`)
+      .then((r) => {
+        if (r.status === 404) { setNotFound(true); return null; }
+        return r.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        setProspect(data.prospect);
+        setSteps(data.steps);
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const startEdit = (step: EmailStep) => {
+    setEditingId(step.id);
+    setDraft({ ...step });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setDraft(null);
+  };
+
+  const pushToInstantly = async () => {
+    setPushing(true);
+    setPushError(null);
+    const res = await fetch('/api/instantly/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prospectId: parseInt(id) }),
+    });
+    if (res.ok) {
+      setPushed(true);
+    } else {
+      const json = await res.json();
+      setPushError(json.error ?? 'Push failed — check your Instantly API key.');
+    }
+    setPushing(false);
+  };
+
+  const saveEdit = async () => {
+    if (!draft) return;
+    setSaving(true);
+    await fetch(`/api/sequences/steps/${draft.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: draft.subject, body: draft.body }),
+    });
+    setSteps((s) => s.map((step) => (step.id === draft.id ? draft : step)));
+    setEditingId(null);
+    setDraft(null);
+    setSaving(false);
+  };
+
+  if (loading) {
     return (
-      <div className="max-w-3xl mx-auto pt-16 text-center text-zinc-500">
+      <div className="flex items-center justify-center h-64 text-slate-400">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading sequence...
+      </div>
+    );
+  }
+
+  if (notFound || !prospect) {
+    return (
+      <div className="max-w-3xl mx-auto pt-16 text-center text-slate-400">
         Prospect not found.{" "}
-        <Link href="/prospects" className="text-indigo-400">
+        <Link href="/prospects" className="text-indigo-600 hover:underline">
           Go back
         </Link>
       </div>
     );
   }
-
-  const startEdit = (step: EmailStep) => {
-    setEditingStep(step.step);
-    setDraft({ ...step });
-  };
-
-  const saveEdit = () => {
-    if (!draft) return;
-    setSequence((s) => s.map((step) => (step.step === draft.step ? draft : step)));
-    setEditingStep(null);
-    setDraft(null);
-  };
-
-  const cancelEdit = () => {
-    setEditingStep(null);
-    setDraft(null);
-  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -73,91 +135,99 @@ export default function SequencePage({
         <div>
           <Link
             href="/prospects"
-            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 mb-3"
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 mb-3"
           >
             <ArrowLeft className="w-3 h-3" /> All prospects
           </Link>
-          <h1 className="text-2xl font-bold text-white">{prospect.name}</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {prospect.firstName} {prospect.lastName}
+          </h1>
           <div className="flex items-center gap-3 mt-1">
-            <p className="text-zinc-400 text-sm">{prospect.company}</p>
-            <a
-              href={prospect.websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
-            >
-              {prospect.websiteUrl} <ExternalLink className="w-3 h-3" />
-            </a>
+            <p className="text-slate-500 text-sm">{prospect.company}</p>
+            {prospect.websiteUrl && (
+              <a
+                href={prospect.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700"
+              >
+                {prospect.websiteUrl} <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
           </div>
         </div>
 
-        <Button
-          onClick={() => setPushed(true)}
-          disabled={pushed}
-          className={`gap-2 ${
-            pushed
-              ? "bg-emerald-800 text-emerald-300 cursor-default"
-              : "bg-indigo-600 hover:bg-indigo-500 text-white"
-          }`}
-        >
-          <Send className="w-4 h-4" />
-          {pushed ? "Pushed to Instantly" : "Push to Instantly"}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            onClick={pushToInstantly}
+            disabled={pushing || pushed}
+            className={`gap-2 shadow-sm ${
+              pushed
+                ? "bg-emerald-600 hover:bg-emerald-600 text-white cursor-default"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+            }`}
+          >
+            {pushing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            {pushed ? "Pushed to Instantly" : pushing ? "Pushing..." : "Push to Instantly"}
+          </Button>
+          {pushError && (
+            <p className="text-xs text-red-500">{pushError}</p>
+          )}
+        </div>
       </div>
 
       {/* Prospect brief */}
-      {prospect.brief && (
-        <Card className="bg-zinc-900 border-zinc-800">
+      {prospect.prospectBrief && (
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
+            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Prospect Brief
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-zinc-300 leading-relaxed">
-              {prospect.brief}
+            <p className="text-sm text-slate-700 leading-relaxed">
+              {prospect.prospectBrief}
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Email sequence */}
+      {/* Email steps */}
       <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-zinc-200">
-          3-Step Email Sequence
-        </h2>
+        <h2 className="text-sm font-semibold text-slate-700">3-Step Email Sequence</h2>
 
-        {sequence.map((step) => {
-          const isEditing = editingStep === step.step;
+        {steps.map((step, i) => {
+          const isEditing = editingId === step.id;
 
           return (
-            <Card key={step.step} className="bg-zinc-900 border-zinc-800">
+            <Card key={step.id} className="bg-white border-slate-200 shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-indigo-900 text-indigo-300 text-xs font-bold flex items-center justify-center">
-                      {step.step}
+                    <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center">
+                      {step.stepNumber}
                     </span>
-                    <CardTitle className="text-sm font-medium text-zinc-300">
-                      {step.step === 1
-                        ? "Initial Email"
-                        : step.step === 2
-                        ? "First Follow-up"
-                        : "Final Follow-up"}
+                    <CardTitle className="text-sm font-medium text-slate-700">
+                      {STEP_LABELS[i] ?? `Email ${step.stepNumber}`}
                     </CardTitle>
                     {step.delayDays > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-zinc-500">
+                      <span className="flex items-center gap-1 text-xs text-slate-400">
                         <Calendar className="w-3 h-3" />
                         Send after {step.delayDays} days
                       </span>
                     )}
                   </div>
+
                   {!isEditing ? (
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => startEdit(step)}
-                      className="h-7 px-2 text-zinc-500 hover:text-white gap-1"
+                      className="h-7 px-2 text-slate-400 hover:text-slate-700 gap-1"
                     >
                       <Pencil className="w-3 h-3" /> Edit
                     </Button>
@@ -167,15 +237,17 @@ export default function SequencePage({
                         size="sm"
                         variant="ghost"
                         onClick={saveEdit}
-                        className="h-7 px-2 text-emerald-400 hover:text-emerald-300 gap-1"
+                        disabled={saving}
+                        className="h-7 px-2 text-emerald-600 hover:text-emerald-700 gap-1"
                       >
-                        <Check className="w-3 h-3" /> Save
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        Save
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={cancelEdit}
-                        className="h-7 px-2 text-zinc-500 hover:text-white"
+                        className="h-7 px-2 text-slate-400 hover:text-slate-600"
                       >
                         <X className="w-3 h-3" />
                       </Button>
@@ -187,40 +259,34 @@ export default function SequencePage({
               <CardContent className="space-y-3">
                 {/* Subject */}
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">
+                  <label className="text-xs font-medium text-slate-400 mb-1 block uppercase tracking-wide">
                     Subject
                   </label>
                   {isEditing && draft ? (
                     <input
                       value={draft.subject}
-                      onChange={(e) =>
-                        setDraft({ ...draft, subject: e.target.value })
-                      }
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   ) : (
-                    <p className="text-sm font-medium text-white">
-                      {step.subject}
-                    </p>
+                    <p className="text-sm font-medium text-slate-900">{step.subject}</p>
                   )}
                 </div>
 
                 {/* Body */}
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">
+                  <label className="text-xs font-medium text-slate-400 mb-1 block uppercase tracking-wide">
                     Body
                   </label>
                   {isEditing && draft ? (
                     <Textarea
                       value={draft.body}
-                      onChange={(e) =>
-                        setDraft({ ...draft, body: e.target.value })
-                      }
+                      onChange={(e) => setDraft({ ...draft, body: e.target.value })}
                       rows={10}
-                      className="bg-zinc-800 border-zinc-700 text-sm text-white focus:ring-indigo-500 resize-none"
+                      className="bg-white border-slate-300 text-sm text-slate-900 focus:ring-indigo-500 resize-none"
                     />
                   ) : (
-                    <pre className="text-sm text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">
+                    <pre className="text-sm text-slate-600 whitespace-pre-wrap font-sans leading-relaxed">
                       {step.body}
                     </pre>
                   )}
