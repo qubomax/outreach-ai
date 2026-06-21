@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { prospects, emailSequences } from '@/lib/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
-import { pushLeadToCampaign } from '@/lib/instantly';
+import { setupCampaignSequence, pushLeadToCampaign } from '@/lib/instantly';
 import { getAuthUserId } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -37,12 +37,22 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.INSTANTLY_API_KEY!;
   const campaignId = process.env.INSTANTLY_CAMPAIGN_ID!;
 
+  const emailSteps = steps.map((s) => ({
+    subject: s.subject,
+    body: s.body,
+    delayDays: s.delayDays,
+  }));
+
+  // Set up the campaign sequence template with variable placeholders
+  await setupCampaignSequence(apiKey, campaignId, emailSteps);
+
+  // Push the lead with all email content as custom variables
   await pushLeadToCampaign(apiKey, campaignId, {
     email: prospect.email,
     firstName: prospect.firstName,
     lastName: prospect.lastName,
     company: prospect.company,
-    personalization: steps[0].body,
+    emails: emailSteps,
   });
 
   await db

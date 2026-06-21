@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   Circle,
   Send,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -87,6 +86,7 @@ export default function ProspectsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [bulkPushing, setBulkPushing] = useState(false);
+  const [pushingIds, setPushingIds] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadProspects = useCallback(async () => {
@@ -147,25 +147,46 @@ export default function ProspectsPage() {
     return () => clearInterval(interval);
   }, []); // Stable — no stale closure issues
 
-  const bulkPush = async () => {
-    const pushableIds = selected.filter((id) => {
+  const bulkPush = async (ids?: number[]) => {
+    const pushableIds = (ids ?? prospects.map((p) => p.id)).filter((id) => {
       const p = prospects.find((x) => x.id === id);
       return p && getDisplayStatus(p) === "ready";
     });
     if (pushableIds.length === 0) return;
     setBulkPushing(true);
-    await Promise.all(
+    const results = await Promise.all(
       pushableIds.map((id) =>
         fetch("/api/instantly/push", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prospectId: id }),
-        })
+        }).then(async (r) => ({ id, ok: r.ok, body: await r.text() }))
       )
     );
+    const failed = results.filter((r) => !r.ok);
+    if (failed.length > 0) {
+      console.error("Push failed:", failed);
+      alert(`Push failed for ${failed.length} prospect(s):\n${failed.map((f) => f.body).join("\n")}`);
+    }
     setBulkPushing(false);
     await loadProspects();
     setSelected([]);
+  };
+
+  const pushOne = async (id: number) => {
+    setPushingIds((s) => new Set(s).add(id));
+    const res = await fetch("/api/instantly/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prospectId: id }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("Push failed:", body);
+      alert(`Push failed: ${body}`);
+    }
+    setPushingIds((s) => { const n = new Set(s); n.delete(id); return n; });
+    await loadProspects();
   };
 
   const startScraping = async (ids: number[]) => {
@@ -206,11 +227,6 @@ export default function ProspectsPage() {
   const toggleAll = () =>
     setSelected(selected.length === prospects.length ? [] : prospects.map((p) => p.id));
 
-  const pendingSelected = selected.filter((id) => {
-    const p = prospects.find((x) => x.id === id);
-    return p?.scrapeStatus === "pending" && p?.websiteUrl;
-  });
-
   const readySelected = selected.filter((id) => {
     const p = prospects.find((x) => x.id === id);
     return p && getDisplayStatus(p) === "ready";
@@ -228,21 +244,11 @@ export default function ProspectsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {pendingSelected.length > 0 && (
-            <Button
-              variant="outline"
-              className="border-amber-300 text-amber-600 hover:bg-amber-50 gap-2"
-              onClick={() => startScraping(pendingSelected)}
-            >
-              <Zap className="w-4 h-4" />
-              Scrape {pendingSelected.length} selected
-            </Button>
-          )}
-          {readySelected.length > 0 && (
+          {(selected.length > 0 ? readySelected.length : readyCount) > 0 && (
             <Button
               variant="outline"
               className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 gap-2"
-              onClick={bulkPush}
+              onClick={() => bulkPush(selected.length > 0 ? selected : undefined)}
               disabled={bulkPushing}
             >
               {bulkPushing ? (
@@ -250,7 +256,9 @@ export default function ProspectsPage() {
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              {bulkPushing ? "Pushing..." : `Push ${readySelected.length} to Instantly`}
+              {bulkPushing
+                ? "Pushing..."
+                : `Push ${selected.length > 0 ? readySelected.length : readyCount} to Instantly`}
             </Button>
           )}
           <Button
@@ -312,7 +320,7 @@ export default function ProspectsPage() {
       {/* Prospect table */}
       {prospects.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-          <div className="grid grid-cols-[32px_1fr_1fr_160px_120px_48px] gap-4 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500 uppercase tracking-wide">
+          <div className="grid grid-cols-[32px_1fr_1fr_160px_120px_72px] gap-4 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500 uppercase tracking-wide">
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -334,7 +342,7 @@ export default function ProspectsPage() {
             return (
               <div
                 key={p.id}
-                className="grid grid-cols-[32px_1fr_1fr_160px_120px_48px] gap-4 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 items-center transition-colors"
+                className="grid grid-cols-[32px_1fr_1fr_160px_120px_72px] gap-4 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 items-center transition-colors"
               >
                 <div>
                   <input
@@ -373,17 +381,33 @@ export default function ProspectsPage() {
                   })}
                 </div>
 
-                <div>
+                <div className="flex items-center gap-1">
                   {status === "ready" && (
-                    <Link href={`/sequences/${p.id}`}>
+                    <>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="w-8 h-8 p-0 text-slate-400 hover:text-slate-700"
+                        className="w-8 h-8 p-0 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
+                        onClick={() => pushOne(p.id)}
+                        disabled={pushingIds.has(p.id)}
+                        title="Push to Instantly"
                       >
-                        <ChevronRight className="w-4 h-4" />
+                        {pushingIds.has(p.id) ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
                       </Button>
-                    </Link>
+                      <Link href={`/sequences/${p.id}`}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="w-8 h-8 p-0 text-slate-400 hover:text-slate-700"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    </>
                   )}
                 </div>
               </div>
