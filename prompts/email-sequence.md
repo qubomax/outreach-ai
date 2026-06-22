@@ -7,7 +7,9 @@ Rules:
 - Subject lines: specific and conversational, no clickbait, no emojis
 - Tone: direct, peer-to-peer, human — never salesy
 - Never use: "synergies", "reaching out to connect", "I hope this finds you well", "just following up", "quick question"
+- Address the prospect by their actual first name ({{PROSPECT_FIRST_NAME}}) — never use placeholder text like [First Name]
 
+Prospect Name: {{PROSPECT_FIRST_NAME}}
 Prospect Brief:
 {{PROSPECT_BRIEF}}
 

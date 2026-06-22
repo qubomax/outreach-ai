@@ -50,7 +50,7 @@ export async function POST() {
           .set({ prospectBrief: brief, updatedAt: new Date() })
           .where(eq(prospects.id, p.id));
 
-        const steps = await generateSequence(brief, SENDER_NAME, SENDER_COMPANY, VALUE_PROP);
+        const steps = await generateSequence(brief, p.firstName, SENDER_NAME, SENDER_COMPANY, VALUE_PROP);
 
         await db.insert(emailSequences).values(
           steps.map((s) => ({
