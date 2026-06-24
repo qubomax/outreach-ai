@@ -3,12 +3,12 @@ import { stripe, PRICE_IDS } from '@/lib/stripe';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAuthUserId } from '@/lib/auth';
+import { ensureUser } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   let userId: string;
   try {
-    userId = await getAuthUserId();
+    userId = await ensureUser();
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

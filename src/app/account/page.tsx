@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, prospects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { ensureUser } from "@/lib/auth";
 import { CheckCircle, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PLAN_LIMITS, stripe, planFromPriceId } from "@/lib/stripe";
@@ -76,6 +77,7 @@ export default async function AccountPage({
 
   const params = await searchParams;
 
+  await ensureUser();
   let [user] = await db.select().from(users).where(eq(users.id, userId));
 
   // Auto-sync from Stripe when redirected back after checkout
