@@ -1,5 +1,41 @@
 const INSTANTLY_BASE = 'https://api.instantly.ai/api/v2';
 
+export interface CampaignStats {
+  emailsSent: number;
+  openCount: number;
+  openRate: number;
+  replyCount: number;
+  replyRate: number;
+}
+
+export async function getCampaignStats(
+  apiKey: string,
+  campaignId: string
+): Promise<CampaignStats | null> {
+  try {
+    const startDate = '2024-01-01';
+    const endDate = new Date().toISOString().split('T')[0];
+    const res = await fetch(
+      `${INSTANTLY_BASE}/analytics/campaign/summary?campaign_id=${campaignId}&start_date=${startDate}&end_date=${endDate}`,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const emailsSent = data.emails_sent ?? 0;
+    const openCount = data.open_count ?? 0;
+    const replyCount = data.reply_count ?? 0;
+    return {
+      emailsSent,
+      openCount,
+      openRate: emailsSent > 0 ? Math.round((openCount / emailsSent) * 100) : 0,
+      replyCount,
+      replyRate: emailsSent > 0 ? Math.round((replyCount / emailsSent) * 100) : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface EmailStep {
   subject: string;
   body: string;

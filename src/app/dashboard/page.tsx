@@ -1,11 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { prospects } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { prospects, emailSequences, users } from "@/lib/db/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Mail, Send, TrendingUp, ArrowRight, Clock } from "lucide-react";
+import { Users, Mail, Send, TrendingUp, ArrowRight, Clock, BarChart2 } from "lucide-react";
 import Link from "next/link";
+import { getCampaignStats } from "@/lib/instantly";
+import { getUserSettings } from "@/lib/user-settings";
 
 function getDisplayStatus(p: { scrapeStatus: string; generateStatus: string }): string {
   if (p.generateStatus === "generated") return "ready";
@@ -40,15 +42,23 @@ export default async function DashboardPage() {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const allProspects = await db
-    .select()
-    .from(prospects)
-    .where(eq(prospects.userId, userId))
-    .orderBy(desc(prospects.createdAt));
+  const [allProspects, pushedSequences, settings] = await Promise.all([
+    db.select().from(prospects).where(eq(prospects.userId, userId)).orderBy(desc(prospects.createdAt)),
+    db.select().from(emailSequences).where(
+      and(eq(emailSequences.userId, userId), eq(emailSequences.pushStatus, "pushed"), eq(emailSequences.stepNumber, 1))
+    ),
+    getUserSettings(userId),
+  ]);
 
   const total = allProspects.length;
   const sequencesGenerated = allProspects.filter((p) => p.generateStatus === "generated").length;
+  const pushedCount = pushedSequences.length;
   const recent = allProspects.slice(0, 5);
+
+  const campaignStats =
+    settings.instantlyApiKey && settings.instantlyCampaignId
+      ? await getCampaignStats(settings.instantlyApiKey, settings.instantlyCampaignId)
+      : null;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -57,6 +67,7 @@ export default async function DashboardPage() {
         <p className="text-slate-500 text-sm mt-1">Your outreach pipeline at a glance</p>
       </div>
 
+      {/* Stats grid */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
@@ -87,22 +98,73 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-slate-900">—</p>
+            <p className="text-3xl font-bold text-slate-900">{pushedCount}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-2">
-              <TrendingUp className="w-3.5 h-3.5" /> Avg Reply Rate
+              <TrendingUp className="w-3.5 h-3.5" /> Reply Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-slate-300">—</p>
+            {campaignStats ? (
+              <p className="text-3xl font-bold text-slate-900">{campaignStats.replyRate}%</p>
+            ) : (
+              <p className="text-3xl font-bold text-slate-300">—</p>
+            )}
           </CardContent>
         </Card>
       </div>
 
+      {/* Instantly campaign stats */}
+      {campaignStats ? (
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-indigo-500" /> Campaign Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-6">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Emails Sent</p>
+                <p className="text-2xl font-bold text-slate-900">{campaignStats.emailsSent}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Opens</p>
+                <p className="text-2xl font-bold text-slate-900">{campaignStats.openCount}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{campaignStats.openRate}% open rate</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Replies</p>
+                <p className="text-2xl font-bold text-slate-900">{campaignStats.replyCount}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{campaignStats.replyRate}% reply rate</p>
+              </div>
+              <div className="flex items-center">
+                <Link
+                  href="/campaigns"
+                  className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                >
+                  View campaign details <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        !settings.instantlyApiKey && (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 flex items-center justify-between">
+            <p className="text-sm text-slate-500">Add your Instantly API key in Settings to see campaign stats.</p>
+            <Link href="/settings">
+              <Button variant="outline" size="sm" className="text-xs border-slate-300">Go to Settings</Button>
+            </Link>
+          </div>
+        )
+      )}
+
+      {/* Upload CTA */}
       <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 flex items-center justify-between">
         <div>
           <p className="font-medium text-slate-900">Upload a new prospect list</p>
@@ -115,6 +177,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      {/* Recent prospects */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-slate-700">Recent Prospects</h2>
