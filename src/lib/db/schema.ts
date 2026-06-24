@@ -32,6 +32,7 @@ export const users = pgTable('users', {
   email: text('email').notNull(),
   apifyApiKey: text('apify_api_key'),
   instantlyApiKey: text('instantly_api_key'),
+  instantlyCampaignId: text('instantly_campaign_id'),
   senderName: text('sender_name'),
   senderTitle: text('sender_title'),
   companyName: text('company_name'),

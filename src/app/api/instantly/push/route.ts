@@ -4,6 +4,7 @@ import { prospects, emailSequences } from '@/lib/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { setupCampaignSequence, pushLeadToCampaign } from '@/lib/instantly';
 import { getAuthUserId } from '@/lib/auth';
+import { getUserSettings } from '@/lib/user-settings';
 
 export async function POST(req: NextRequest) {
   let userId: string;
@@ -34,8 +35,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No email sequence found' }, { status: 400 });
   }
 
-  const apiKey = process.env.INSTANTLY_API_KEY!;
-  const campaignId = process.env.INSTANTLY_CAMPAIGN_ID!;
+  const { instantlyApiKey: apiKey, instantlyCampaignId: campaignId } = await getUserSettings(userId);
+
+  if (!apiKey || !campaignId) {
+    return NextResponse.json(
+      { error: 'Instantly API key and Campaign ID are required. Add them in Settings.' },
+      { status: 400 }
+    );
+  }
 
   const emailSteps = steps.map((s) => ({
     subject: s.subject,

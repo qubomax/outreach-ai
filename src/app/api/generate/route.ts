@@ -5,11 +5,7 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { generateBrief } from '@/lib/agents/research-agent';
 import { generateSequence } from '@/lib/agents/sequence-agent';
 import { getAuthUserId } from '@/lib/auth';
-
-const SENDER_NAME = 'Alex';
-const SENDER_COMPANY = 'outreach-ai';
-const VALUE_PROP =
-  'We help B2B sales teams send hyper-personalized cold emails at scale — automatically researching each prospect and generating a custom 3-step sequence per contact.';
+import { getUserSettings } from '@/lib/user-settings';
 
 export async function POST() {
   let userId: string;
@@ -34,6 +30,8 @@ export async function POST() {
     return NextResponse.json({ generated: 0 });
   }
 
+  const settings = await getUserSettings(userId);
+
   await db
     .update(prospects)
     .set({ generateStatus: 'generating', updatedAt: new Date() })
@@ -50,7 +48,7 @@ export async function POST() {
           .set({ prospectBrief: brief, updatedAt: new Date() })
           .where(eq(prospects.id, p.id));
 
-        const steps = await generateSequence(brief, p.firstName, SENDER_NAME, SENDER_COMPANY, VALUE_PROP);
+        const steps = await generateSequence(brief, p.firstName, settings.senderName, settings.companyName, settings.valueProposition);
 
         await db.insert(emailSequences).values(
           steps.map((s) => ({

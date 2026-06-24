@@ -93,6 +93,7 @@ function useSaveField(key: string) {
 export default function SettingsPage() {
   const [apifyKey, setApifyKey] = useState('');
   const [instantlyKey, setInstantlyKey] = useState('');
+  const [instantlyCampaignId, setInstantlyCampaignId] = useState('');
   const [senderName, setSenderName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [valueProp, setValueProp] = useState('');
@@ -101,6 +102,7 @@ export default function SettingsPage() {
 
   const apify = useSaveField('apifyApiKey');
   const instantly = useSaveField('instantlyApiKey');
+  const campaignId = useSaveField('instantlyCampaignId');
 
   useEffect(() => {
     fetch('/api/settings')
@@ -108,6 +110,7 @@ export default function SettingsPage() {
       .then((data) => {
         setApifyKey(data.apifyApiKey ?? '');
         setInstantlyKey(data.instantlyApiKey ?? '');
+        setInstantlyCampaignId(data.instantlyCampaignId ?? '');
         setSenderName(data.senderName ?? '');
         setCompanyName(data.companyName ?? '');
         setValueProp(data.valueProposition ?? '');
@@ -159,6 +162,36 @@ export default function SettingsPage() {
             saving={instantly.saving}
             saved={instantly.saved}
           />
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Instantly Campaign ID</label>
+            <p className="text-xs text-slate-400">Find this in your Instantly campaign URL: app.instantly.ai/app/campaign/<strong>campaign-id</strong>/...</p>
+            <div className="flex gap-2">
+              <input
+                value={instantlyCampaignId}
+                onChange={(e) => setInstantlyCampaignId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
+              />
+              <Button
+                onClick={() => campaignId.save(instantlyCampaignId)}
+                disabled={campaignId.saving || campaignId.saved}
+                size="sm"
+                className={`gap-1.5 min-w-[72px] ${
+                  campaignId.saved
+                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-50'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                }`}
+              >
+                {campaignId.saving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : campaignId.saved ? (
+                  <><Check className="w-3.5 h-3.5" /> Saved</>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

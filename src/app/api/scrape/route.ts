@@ -4,6 +4,7 @@ import { prospects } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { startScrape } from '@/lib/apify';
 import { getAuthUserId } from '@/lib/auth';
+import { getUserSettings } from '@/lib/user-settings';
 
 // POST /api/scrape  body: { prospectIds: number[] }
 // Only starts ONE Apify run — the next pending prospect.
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { prospectIds } = await req.json() as { prospectIds: number[] };
-  const apiKey = process.env.APIFY_API_KEY!;
+  const { apifyApiKey: apiKey } = await getUserSettings(userId);
 
   const rows = await db
     .select()

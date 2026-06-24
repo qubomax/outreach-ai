@@ -18,6 +18,7 @@ export async function GET() {
   return NextResponse.json({
     apifyApiKey: user.apifyApiKey ?? '',
     instantlyApiKey: user.instantlyApiKey ?? '',
+    instantlyCampaignId: user.instantlyCampaignId ?? '',
     senderName: user.senderName ?? '',
     companyName: user.companyName ?? '',
     valueProposition: user.valueProposition ?? '',
@@ -34,7 +35,7 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
 
-  const allowed = ['apifyApiKey', 'instantlyApiKey', 'senderName', 'companyName', 'valueProposition'] as const;
+  const allowed = ['apifyApiKey', 'instantlyApiKey', 'instantlyCampaignId', 'senderName', 'companyName', 'valueProposition'] as const;
   const update: Partial<Record<typeof allowed[number], string>> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
