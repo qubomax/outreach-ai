@@ -131,7 +131,7 @@ export default function SequencePage({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
         <div>
@@ -181,16 +181,16 @@ export default function SequencePage({
       </div>
 
       {/* Two-panel layout */}
-      <div className="flex gap-6 flex-1 min-h-0">
-        {/* Left panel — prospect brief */}
-        <div className="w-72 shrink-0 flex flex-col">
+      <div className="flex gap-6 items-start">
+        {/* Left panel — prospect brief (sticky) */}
+        <div className="w-72 shrink-0 sticky top-6">
           <div className="flex items-center gap-2 mb-3">
             <FileText className="w-4 h-4 text-slate-400" />
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Prospect Brief
             </span>
           </div>
-          <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-y-auto">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
             {prospect.prospectBrief ? (
               <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
                 {prospect.prospectBrief}
@@ -204,7 +204,7 @@ export default function SequencePage({
         </div>
 
         {/* Right panel — email steps */}
-        <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col gap-4">
           <div className="flex items-center gap-2 mb-1">
             <Send className="w-4 h-4 text-slate-400" />
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
