@@ -383,31 +383,31 @@ export default function ProspectsPage() {
 
                 <div className="flex items-center gap-1">
                   {status === "ready" && (
-                    <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-8 h-8 p-0 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
+                      onClick={() => pushOne(p.id)}
+                      disabled={pushingIds.has(p.id)}
+                      title="Push to Instantly"
+                    >
+                      {pushingIds.has(p.id) ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                  )}
+                  {(status === "ready" || status === "pushed") && (
+                    <Link href={`/sequences/${p.id}`}>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="w-8 h-8 p-0 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
-                        onClick={() => pushOne(p.id)}
-                        disabled={pushingIds.has(p.id)}
-                        title="Push to Instantly"
+                        className="w-8 h-8 p-0 text-slate-400 hover:text-slate-700"
                       >
-                        {pushingIds.has(p.id) ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Send className="w-3.5 h-3.5" />
-                        )}
+                        <ChevronRight className="w-4 h-4" />
                       </Button>
-                      <Link href={`/sequences/${p.id}`}>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="w-8 h-8 p-0 text-slate-400 hover:text-slate-700"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                    </>
+                    </Link>
                   )}
                 </div>
               </div>

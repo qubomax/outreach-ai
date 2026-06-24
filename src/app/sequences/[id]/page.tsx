@@ -22,6 +22,7 @@ interface EmailStep {
   subject: string;
   body: string;
   delayDays: number;
+  pushStatus: string | null;
 }
 
 interface Prospect {
@@ -64,6 +65,7 @@ export default function SequencePage({
         if (!data) return;
         setProspect(data.prospect);
         setSteps(data.steps);
+        if (data.steps[0]?.pushStatus === 'pushed') setPushed(true);
       })
       .finally(() => setLoading(false));
   }, [id]);

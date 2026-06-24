@@ -1,27 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, Check } from "lucide-react";
+import { Eye, EyeOff, Check, Loader2 } from "lucide-react";
 
 function ApiKeyInput({
   label,
   placeholder,
-  defaultValue = "",
+  value,
+  onChange,
+  onSave,
+  saving,
+  saved,
 }: {
   label: string;
   placeholder: string;
-  defaultValue?: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
 }) {
-  const [value, setValue] = useState(defaultValue);
   const [show, setShow] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   return (
     <div className="space-y-1.5">
@@ -31,7 +32,7 @@ function ApiKeyInput({
           <input
             type={show ? "text" : "password"}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
           />
@@ -44,22 +45,87 @@ function ApiKeyInput({
           </button>
         </div>
         <Button
-          onClick={handleSave}
+          onClick={onSave}
+          disabled={saving || saved}
           size="sm"
-          className={`gap-1.5 ${
+          className={`gap-1.5 min-w-[72px] ${
             saved
               ? "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-50"
               : "bg-indigo-600 hover:bg-indigo-700 text-white"
           }`}
         >
-          {saved ? <><Check className="w-3.5 h-3.5" /> Saved</> : "Save"}
+          {saving ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : saved ? (
+            <><Check className="w-3.5 h-3.5" /> Saved</>
+          ) : (
+            "Save"
+          )}
         </Button>
       </div>
     </div>
   );
 }
 
+async function patchSetting(key: string, value: string) {
+  await fetch('/api/settings', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [key]: value }),
+  });
+}
+
+function useSaveField(key: string) {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const save = async (value: string) => {
+    setSaving(true);
+    await patchSetting(key, value);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return { saving, saved, save };
+}
+
 export default function SettingsPage() {
+  const [apifyKey, setApifyKey] = useState('');
+  const [instantlyKey, setInstantlyKey] = useState('');
+  const [senderName, setSenderName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [valueProp, setValueProp] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const apify = useSaveField('apifyApiKey');
+  const instantly = useSaveField('instantlyApiKey');
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        setApifyKey(data.apifyApiKey ?? '');
+        setInstantlyKey(data.instantlyApiKey ?? '');
+        setSenderName(data.senderName ?? '');
+        setCompanyName(data.companyName ?? '');
+        setValueProp(data.valueProposition ?? '');
+      });
+  }, []);
+
+  const saveProfile = async () => {
+    setProfileSaving(true);
+    await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderName, companyName, valueProposition: valueProp }),
+    });
+    setProfileSaving(false);
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2000);
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
@@ -72,22 +138,26 @@ export default function SettingsPage() {
       <Card className="bg-white border-slate-200 shadow-sm">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-slate-900">API Keys</CardTitle>
-          <p className="text-xs text-slate-500">
-            Keys are stored per-user and never shared.
-          </p>
+          <p className="text-xs text-slate-500">Keys are stored per-user and never shared.</p>
         </CardHeader>
         <CardContent className="space-y-5">
           <ApiKeyInput
             label="Apify API Key"
             placeholder="apify_api_xxxxxxxxxxxx"
+            value={apifyKey}
+            onChange={setApifyKey}
+            onSave={() => apify.save(apifyKey)}
+            saving={apify.saving}
+            saved={apify.saved}
           />
           <ApiKeyInput
             label="Instantly.ai API Key"
             placeholder="inst_xxxxxxxxxxxx"
-          />
-          <ApiKeyInput
-            label="Anthropic API Key"
-            placeholder="sk-ant-xxxxxxxxxxxx"
+            value={instantlyKey}
+            onChange={setInstantlyKey}
+            onSave={() => instantly.save(instantlyKey)}
+            saving={instantly.saving}
+            saved={instantly.saved}
           />
         </CardContent>
       </Card>
@@ -104,15 +174,19 @@ export default function SettingsPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">Your Name</label>
               <input
-                defaultValue="Alex"
-                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="Alex"
+                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">Your Company</label>
               <input
-                defaultValue="outreach-ai"
-                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Acme Inc"
+                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
               />
             </div>
           </div>
@@ -120,15 +194,31 @@ export default function SettingsPage() {
             <label className="text-sm font-medium text-slate-700">Value Proposition</label>
             <textarea
               rows={3}
-              defaultValue="We help B2B sales teams send hyper-personalized cold emails at scale — automatically researching each prospect and generating a custom 3-step sequence per contact."
-              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              value={valueProp}
+              onChange={(e) => setValueProp(e.target.value)}
+              placeholder="We help B2B sales teams send hyper-personalized cold emails at scale..."
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none placeholder:text-slate-400"
             />
             <p className="text-xs text-slate-400">
               This is injected into every email sequence Claude generates.
             </p>
           </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
-            Save Profile
+          <Button
+            onClick={saveProfile}
+            disabled={profileSaving || profileSaved}
+            className={`gap-1.5 ${
+              profileSaved
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-50"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+            }`}
+          >
+            {profileSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : profileSaved ? (
+              <><Check className="w-4 h-4" /> Saved</>
+            ) : (
+              "Save Profile"
+            )}
           </Button>
         </CardContent>
       </Card>

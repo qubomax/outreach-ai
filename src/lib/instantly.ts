@@ -86,7 +86,6 @@ export async function pushLeadToCampaign(
           first_name: lead.firstName,
           last_name: lead.lastName,
           company_name: lead.company,
-          personalization: lead.emails[0]?.body ?? '',
           custom_variables: customVariables,
         },
       ],
