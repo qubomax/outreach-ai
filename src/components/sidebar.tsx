@@ -9,6 +9,7 @@ import {
   Mail,
   BarChart2,
   Settings,
+  CreditCard,
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ const NAV = [
   { label: "Sequences", href: "/sequences", icon: Mail },
   { label: "Campaigns", href: "/campaigns", icon: BarChart2 },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Account", href: "/account", icon: CreditCard },
 ];
 
 export function Sidebar() {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Zap, Upload, Brain, Send, CheckCircle } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
 
 const STEPS = [
   {
@@ -62,7 +63,10 @@ const BEFORE_AFTER = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const { userId } = await auth();
+  const isLoggedIn = !!userId;
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Nav */}
@@ -80,15 +84,26 @@ export default function LandingPage() {
           <a href="#pricing" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
             Pricing
           </a>
-          <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
-            Sign in
-          </Link>
-          <Link
-            href="/sign-up"
-            className="text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            Get started
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              Go to app <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          ) : (
+            <>
+              <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
+                Sign in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Get started
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -107,10 +122,10 @@ export default function LandingPage() {
         </p>
         <div className="flex items-center justify-center gap-4">
           <Link
-            href="/sign-up"
+            href={isLoggedIn ? "/dashboard" : "/sign-up"}
             className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-3 rounded-lg transition-colors text-sm shadow-sm"
           >
-            Start free trial <ArrowRight className="w-4 h-4" />
+            {isLoggedIn ? "Go to app" : "Start free trial"} <ArrowRight className="w-4 h-4" />
           </Link>
           <a
             href="#how-it-works"
