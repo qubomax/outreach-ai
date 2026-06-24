@@ -6,6 +6,7 @@ import { Sidebar } from "./sidebar";
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
+  const isMarketingPage = pathname === "/";
 
   if (isAuthPage) {
     return (
@@ -13,6 +14,10 @@ export function ConditionalLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
     );
+  }
+
+  if (isMarketingPage) {
+    return <>{children}</>;
   }
 
   return (

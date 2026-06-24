@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Prospects", href: "/prospects", icon: Users },
   { label: "Sequences", href: "/sequences", icon: Mail },
   { label: "Campaigns", href: "/campaigns", icon: BarChart2 },
