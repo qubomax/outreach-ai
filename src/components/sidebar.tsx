@@ -58,14 +58,14 @@ export function Sidebar() {
           <UserButton />
           <span className="text-xs text-slate-500">Account</span>
         </div>
-        <div className="px-2.5 py-3 rounded-lg bg-slate-50 border border-slate-200">
+        <Link
+          href="/account"
+          className="px-2.5 py-3 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors block"
+        >
           <p className="text-xs text-slate-400 mb-1">Plan</p>
-          <p className="text-sm font-semibold text-slate-900">Starter — $49/mo</p>
-          <p className="text-xs text-slate-500 mt-1">7 / 200 prospects used</p>
-          <div className="mt-2 h-1.5 rounded-full bg-slate-200">
-            <div className="h-1.5 rounded-full bg-indigo-500 w-[3.5%]" />
-          </div>
-        </div>
+          <p className="text-sm font-semibold text-slate-900">Upgrade →</p>
+          <p className="text-xs text-slate-500 mt-1">View plans &amp; billing</p>
+        </Link>
       </div>
     </aside>
   );
