@@ -3,7 +3,6 @@
 import { use, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft,
   Send,
@@ -13,6 +12,7 @@ import {
   ExternalLink,
   Calendar,
   Loader2,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -65,7 +65,7 @@ export default function SequencePage({
         if (!data) return;
         setProspect(data.prospect);
         setSteps(data.steps);
-        if (data.steps[0]?.pushStatus === 'pushed') setPushed(true);
+        if (data.steps[0]?.pushStatus === "pushed") setPushed(true);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -80,23 +80,6 @@ export default function SequencePage({
     setDraft(null);
   };
 
-  const pushToInstantly = async () => {
-    setPushing(true);
-    setPushError(null);
-    const res = await fetch('/api/instantly/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prospectId: parseInt(id) }),
-    });
-    if (res.ok) {
-      setPushed(true);
-    } else {
-      const json = await res.json();
-      setPushError(json.error ?? 'Push failed — check your Instantly API key.');
-    }
-    setPushing(false);
-  };
-
   const saveEdit = async () => {
     if (!draft) return;
     setSaving(true);
@@ -109,6 +92,23 @@ export default function SequencePage({
     setEditingId(null);
     setDraft(null);
     setSaving(false);
+  };
+
+  const pushToInstantly = async () => {
+    setPushing(true);
+    setPushError(null);
+    const res = await fetch("/api/instantly/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prospectId: parseInt(id) }),
+    });
+    if (res.ok) {
+      setPushed(true);
+    } else {
+      const json = await res.json();
+      setPushError(json.error ?? "Push failed — check your Instantly API key.");
+    }
+    setPushing(false);
   };
 
   if (loading) {
@@ -131,32 +131,32 @@ export default function SequencePage({
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
+    <div className="flex flex-col h-full">
+      {/* Top bar */}
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
         <div>
           <Link
             href="/prospects"
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 mb-3"
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 mb-1"
           >
             <ArrowLeft className="w-3 h-3" /> All prospects
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl font-bold text-slate-900">
             {prospect.firstName} {prospect.lastName}
+            <span className="ml-2 text-slate-400 font-normal text-base">
+              · {prospect.company}
+            </span>
           </h1>
-          <div className="flex items-center gap-3 mt-1">
-            <p className="text-slate-500 text-sm">{prospect.company}</p>
-            {prospect.websiteUrl && (
-              <a
-                href={prospect.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700"
-              >
-                {prospect.websiteUrl} <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
-          </div>
+          {prospect.websiteUrl && (
+            <a
+              href={prospect.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 mt-0.5"
+            >
+              {prospect.websiteUrl} <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-1">
@@ -176,50 +176,63 @@ export default function SequencePage({
             )}
             {pushed ? "Pushed to Instantly" : pushing ? "Pushing..." : "Push to Instantly"}
           </Button>
-          {pushError && (
-            <p className="text-xs text-red-500">{pushError}</p>
-          )}
+          {pushError && <p className="text-xs text-red-500 max-w-xs text-right">{pushError}</p>}
         </div>
       </div>
 
-      {/* Prospect brief */}
-      {prospect.prospectBrief && (
-        <Card className="bg-white border-slate-200 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+      {/* Two-panel layout */}
+      <div className="flex gap-6 flex-1 min-h-0">
+        {/* Left panel — prospect brief */}
+        <div className="w-72 shrink-0 flex flex-col">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Prospect Brief
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-700 leading-relaxed">
-              {prospect.prospectBrief}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+            </span>
+          </div>
+          <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-y-auto">
+            {prospect.prospectBrief ? (
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                {prospect.prospectBrief}
+              </p>
+            ) : (
+              <p className="text-sm text-slate-400 italic">
+                No brief generated yet.
+              </p>
+            )}
+          </div>
+        </div>
 
-      {/* Email steps */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-slate-700">3-Step Email Sequence</h2>
+        {/* Right panel — email steps */}
+        <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
+          <div className="flex items-center gap-2 mb-1">
+            <Send className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              3-Step Email Sequence
+            </span>
+          </div>
 
-        {steps.map((step, i) => {
-          const isEditing = editingId === step.id;
+          {steps.map((step, i) => {
+            const isEditing = editingId === step.id;
 
-          return (
-            <Card key={step.id} className="bg-white border-slate-200 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center">
+            return (
+              <div
+                key={step.id}
+                className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden"
+              >
+                {/* Step header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center shrink-0">
                       {step.stepNumber}
                     </span>
-                    <CardTitle className="text-sm font-medium text-slate-700">
+                    <span className="text-sm font-semibold text-slate-700">
                       {STEP_LABELS[i] ?? `Email ${step.stepNumber}`}
-                    </CardTitle>
+                    </span>
                     {step.delayDays > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-slate-400">
+                      <span className="flex items-center gap-1 text-xs text-slate-400 ml-1">
                         <Calendar className="w-3 h-3" />
-                        Send after {step.delayDays} days
+                        +{step.delayDays} days
                       </span>
                     )}
                   </div>
@@ -242,7 +255,11 @@ export default function SequencePage({
                         disabled={saving}
                         className="h-7 px-2 text-emerald-600 hover:text-emerald-700 gap-1"
                       >
-                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        {saving ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
                         Save
                       </Button>
                       <Button
@@ -256,47 +273,52 @@ export default function SequencePage({
                     </div>
                   )}
                 </div>
-              </CardHeader>
 
-              <CardContent className="space-y-3">
-                {/* Subject */}
-                <div>
-                  <label className="text-xs font-medium text-slate-400 mb-1 block uppercase tracking-wide">
-                    Subject
-                  </label>
-                  {isEditing && draft ? (
-                    <input
-                      value={draft.subject}
-                      onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
-                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium text-slate-900">{step.subject}</p>
-                  )}
-                </div>
+                {/* Step body */}
+                <div className="p-4 space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-slate-400 mb-1.5 block uppercase tracking-wide">
+                      Subject
+                    </label>
+                    {isEditing && draft ? (
+                      <input
+                        value={draft.subject}
+                        onChange={(e) =>
+                          setDraft({ ...draft, subject: e.target.value })
+                        }
+                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium text-slate-900">
+                        {step.subject}
+                      </p>
+                    )}
+                  </div>
 
-                {/* Body */}
-                <div>
-                  <label className="text-xs font-medium text-slate-400 mb-1 block uppercase tracking-wide">
-                    Body
-                  </label>
-                  {isEditing && draft ? (
-                    <Textarea
-                      value={draft.body}
-                      onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-                      rows={10}
-                      className="bg-white border-slate-300 text-sm text-slate-900 focus:ring-indigo-500 resize-none"
-                    />
-                  ) : (
-                    <pre className="text-sm text-slate-600 whitespace-pre-wrap font-sans leading-relaxed">
-                      {step.body}
-                    </pre>
-                  )}
+                  <div>
+                    <label className="text-xs font-medium text-slate-400 mb-1.5 block uppercase tracking-wide">
+                      Body
+                    </label>
+                    {isEditing && draft ? (
+                      <Textarea
+                        value={draft.body}
+                        onChange={(e) =>
+                          setDraft({ ...draft, body: e.target.value })
+                        }
+                        rows={10}
+                        className="bg-white border-slate-300 text-sm text-slate-900 focus:ring-indigo-500 resize-none"
+                      />
+                    ) : (
+                      <pre className="text-sm text-slate-600 whitespace-pre-wrap font-sans leading-relaxed">
+                        {step.body}
+                      </pre>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
