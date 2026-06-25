@@ -160,22 +160,35 @@ export default function SequencePage({
         </div>
 
         <div className="flex flex-col items-end gap-1">
-          <Button
-            onClick={pushToInstantly}
-            disabled={pushing || pushed}
-            className={`gap-2 shadow-sm ${
-              pushed
-                ? "bg-emerald-600 hover:bg-emerald-600 text-white cursor-default"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white"
-            }`}
-          >
-            {pushing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
+          <div className="flex items-center gap-2">
+            {pushed && (
+              <Button
+                onClick={pushToInstantly}
+                disabled={pushing}
+                variant="outline"
+                className="gap-2 border-slate-300 text-slate-600 hover:text-slate-900"
+              >
+                {pushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Repush
+              </Button>
             )}
-            {pushed ? "Pushed to Instantly" : pushing ? "Pushing..." : "Push to Instantly"}
-          </Button>
+            <Button
+              onClick={pushToInstantly}
+              disabled={pushing || pushed}
+              className={`gap-2 shadow-sm ${
+                pushed
+                  ? "bg-emerald-600 hover:bg-emerald-600 text-white cursor-default"
+                  : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              }`}
+            >
+              {pushing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {pushed ? "Pushed to Instantly" : pushing ? "Pushing..." : "Push to Instantly"}
+            </Button>
+          </div>
           {pushError && <p className="text-xs text-red-500 max-w-xs text-right">{pushError}</p>}
         </div>
       </div>
