@@ -7,7 +7,7 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "outreach-ai",
+  title: "Cold Hero",
   description: "AI-powered cold outreach personalization engine",
 };
 

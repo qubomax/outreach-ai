@@ -74,7 +74,7 @@ export default async function LandingPage() {
         <div className="flex items-center gap-2">
           <Zap className="w-5 h-5 text-indigo-500" />
           <span className="font-semibold text-slate-900 tracking-tight">
-            outreach<span className="text-indigo-500">-ai</span>
+            cold<span className="text-indigo-500">hero</span>
           </span>
         </div>
         <div className="flex items-center gap-6">
@@ -252,9 +252,9 @@ export default async function LandingPage() {
       <footer className="border-t border-slate-100 py-10 text-center text-sm text-slate-400">
         <div className="flex items-center justify-center gap-2 mb-3">
           <Zap className="w-4 h-4 text-indigo-400" />
-          <span className="font-medium text-slate-600">outreach-ai</span>
+          <span className="font-medium text-slate-600">Cold Hero</span>
         </div>
-        <p>© {new Date().getFullYear()} outreach-ai. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Cold Hero. All rights reserved.</p>
       </footer>
     </div>
   );

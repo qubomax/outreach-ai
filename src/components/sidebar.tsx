@@ -31,7 +31,7 @@ export function Sidebar() {
       <div className="flex items-center gap-2 px-2 mb-8">
         <Zap className="w-5 h-5 text-indigo-500" />
         <span className="font-semibold text-slate-900 text-sm tracking-tight">
-          outreach<span className="text-indigo-500">-ai</span>
+          cold<span className="text-indigo-500">hero</span>
         </span>
       </div>
 
