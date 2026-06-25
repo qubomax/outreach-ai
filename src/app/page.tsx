@@ -26,7 +26,7 @@ const STEPS = [
 const PRICING = [
   {
     name: "Starter",
-    price: "$49",
+    price: "$49.99",
     prospects: "200 prospects / mo",
     features: ["AI prospect research", "3-step sequences", "Instantly.ai push", "Sequence editor"],
     cta: "Start free trial",

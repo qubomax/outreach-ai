@@ -4,7 +4,7 @@ import { prospects, emailSequences, users } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Mail, Send, TrendingUp, ArrowRight, Clock, BarChart2 } from "lucide-react";
+import { Users, Mail, Send, TrendingUp, ArrowRight, Clock, BarChart2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { getCampaignStats } from "@/lib/instantly";
 import { getUserSettings } from "@/lib/user-settings";
@@ -66,6 +66,23 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <p className="text-slate-500 text-sm mt-1">Your outreach pipeline at a glance</p>
       </div>
+
+      {/* Onboarding banner */}
+      {(!settings.apifyApiKey || !settings.instantlyApiKey || !settings.instantlyCampaignId) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+            <p className="text-sm text-amber-800">
+              Complete your setup — add your Apify and Instantly API keys to start generating sequences.
+            </p>
+          </div>
+          <Link href="/settings">
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs shrink-0 ml-4">
+              Go to Settings
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

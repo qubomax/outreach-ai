@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Papa from 'papaparse';
 import { db } from '@/lib/db';
-import { prospects } from '@/lib/db/schema';
+import { prospects, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { ensureUser } from '@/lib/auth';
+import { PLAN_LIMITS } from '@/lib/stripe';
 
 type CsvRow = Record<string, string>;
 
@@ -59,13 +60,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  const plan = user?.plan ?? 'free';
+  const limit = PLAN_LIMITS[plan] ?? 0;
+
   const existing = await db
     .select({ email: prospects.email })
     .from(prospects)
     .where(eq(prospects.userId, userId));
   const existingEmails = new Set(existing.map((r) => r.email.toLowerCase()));
 
-  const newRows = valid.filter((row) => !existingEmails.has(row.email.trim().toLowerCase()));
+  if (limit === 0) {
+    return NextResponse.json(
+      { error: 'You need an active plan to upload prospects. Please upgrade on the Account page.' },
+      { status: 403 }
+    );
+  }
+
+  const currentCount = existing.length;
+  if (currentCount >= limit) {
+    return NextResponse.json(
+      { error: `You've reached your ${limit} prospect limit on the ${plan} plan. Upgrade to add more.` },
+      { status: 403 }
+    );
+  }
+
+  const remaining = limit - currentCount;
+  const newRows = valid
+    .filter((row) => !existingEmails.has(row.email.trim().toLowerCase()))
+    .slice(0, remaining);
 
   if (newRows.length === 0) {
     return NextResponse.json({ inserted: 0, skipped: valid.length });
