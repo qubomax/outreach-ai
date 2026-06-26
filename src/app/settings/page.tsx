@@ -35,6 +35,7 @@ export default function SettingsPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [gmailEmail, setGmailEmail] = useState<string | null>(null);
+  const [gmailErrorCode, setGmailErrorCode] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -45,6 +46,16 @@ export default function SettingsPage() {
         setValueProp(data.valueProposition ?? '');
         setGmailEmail(data.gmailEmail ?? null);
       });
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('gmail_connected')) {
+      window.history.replaceState({}, '', '/settings');
+      fetch('/api/settings').then(r => r.json()).then(d => setGmailEmail(d.gmailEmail ?? null));
+    }
+    if (params.get('gmail_error')) {
+      setGmailErrorCode(params.get('gmail_error'));
+      window.history.replaceState({}, '', '/settings');
+    }
   }, []);
 
   const saveProfile = async () => {
@@ -75,6 +86,11 @@ export default function SettingsPage() {
           </p>
         </CardHeader>
         <CardContent>
+          {gmailErrorCode && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+              Gmail connection failed (error {gmailErrorCode}). Check the server logs and try again.
+            </div>
+          )}
           {gmailEmail ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">

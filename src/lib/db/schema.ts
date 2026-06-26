@@ -77,8 +77,23 @@ export const emailSequences = pgTable('email_sequences', {
   body: text('body').notNull(),
   delayDays: integer('delay_days').notNull().default(0),
   pushStatus: pushStatusEnum('push_status').default('pending').notNull(),
+  gmailThreadId: text('gmail_thread_id'), // set after Email 1 is sent
+  gmailMessageId: text('gmail_message_id'),
+  sentAt: timestamp('sent_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const scheduledEmails = pgTable('scheduled_emails', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  prospectId: integer('prospect_id').notNull().references(() => prospects.id, { onDelete: 'cascade' }),
+  sequenceStepId: integer('sequence_step_id').notNull().references(() => emailSequences.id, { onDelete: 'cascade' }),
+  sendAt: timestamp('send_at').notNull(),
+  status: text('status').default('pending').notNull(), // 'pending' | 'sent' | 'failed' | 'skipped'
+  gmailThreadId: text('gmail_thread_id'), // reply into this thread
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const campaigns = pgTable('campaigns', {
