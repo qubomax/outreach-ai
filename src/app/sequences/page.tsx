@@ -4,6 +4,7 @@ import { prospects, emailSequences } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { ChevronRight, Mail } from "lucide-react";
 import Link from "next/link";
+import BulkSendButton from "./bulk-send-button";
 
 export default async function SequencesPage() {
   const { userId } = await auth();
@@ -33,13 +34,18 @@ export default async function SequencesPage() {
     )
     .orderBy(desc(prospects.createdAt));
 
+  const unsentIds = rows.filter((r) => r.pushStatus !== "pushed").map((r) => r.id);
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Sequences</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          {rows.length} sequence{rows.length !== 1 ? "s" : ""} generated
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Sequences</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            {rows.length} sequence{rows.length !== 1 ? "s" : ""} generated
+          </p>
+        </div>
+        {unsentIds.length > 0 && <BulkSendButton prospectIds={unsentIds} />}
       </div>
 
       {rows.length === 0 ? (
