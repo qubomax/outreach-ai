@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 // Max prospects to process per function call (prevents Vercel timeout)
 const MAX_PER_CALL = 10;
-const BATCH_SIZE = 5;
+const BATCH_SIZE = 3;
 const STUCK_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
 
 export async function POST(req: NextRequest) {

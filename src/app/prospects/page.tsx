@@ -208,8 +208,17 @@ export default function ProspectsPage() {
   const toggleAll = () =>
     setSelected(selected.length === prospects.length ? [] : prospects.map((p) => p.id));
 
-  const readyCount = prospects.filter((p) => getDisplayStatus(p) === "ready").length;
-  const failedCount = prospects.filter((p) => getDisplayStatus(p) === "failed").length;
+  const statusCounts = {
+    pending:    prospects.filter((p) => getDisplayStatus(p) === "pending").length,
+    scraping:   prospects.filter((p) => getDisplayStatus(p) === "scraping").length,
+    scraped:    prospects.filter((p) => getDisplayStatus(p) === "scraped").length,
+    generating: prospects.filter((p) => getDisplayStatus(p) === "generating").length,
+    ready:      prospects.filter((p) => getDisplayStatus(p) === "ready").length,
+    sent:       prospects.filter((p) => getDisplayStatus(p) === "pushed").length,
+    failed:     prospects.filter((p) => getDisplayStatus(p) === "failed").length,
+  };
+  const readyCount = statusCounts.ready;
+  const failedCount = statusCounts.failed;
   const selectedReadyIds = selected.filter(
     (id) => getDisplayStatus(prospects.find((p) => p.id === id)!) === "ready"
   );
@@ -239,9 +248,46 @@ export default function ProspectsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Prospects</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            {prospects.length} prospects · {readyCount} sequences ready
-          </p>
+          <p className="text-slate-500 text-sm mt-1">{prospects.length} total</p>
+          {prospects.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {statusCounts.pending > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                  {statusCounts.pending} pending
+                </span>
+              )}
+              {statusCounts.scraping > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                  {statusCounts.scraping} scraping
+                </span>
+              )}
+              {statusCounts.scraped > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  {statusCounts.scraped} scraped
+                </span>
+              )}
+              {statusCounts.generating > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                  {statusCounts.generating} generating
+                </span>
+              )}
+              {statusCounts.ready > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                  {statusCounts.ready} ready to send
+                </span>
+              )}
+              {statusCounts.sent > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                  {statusCounts.sent} sent
+                </span>
+              )}
+              {statusCounts.failed > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
+                  {statusCounts.failed} failed
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {/* Action bar — appears when ready rows are checked */}
