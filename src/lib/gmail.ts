@@ -39,6 +39,11 @@ async function getValidAccessToken(userId: string, tokens: GmailTokens): Promise
   return refreshAccessToken(userId, tokens.refreshToken);
 }
 
+function encodeHeader(value: string): string {
+  if (/^[\x00-\x7F]*$/.test(value)) return value;
+  return `=?UTF-8?B?${Buffer.from(value, 'utf8').toString('base64')}?=`;
+}
+
 function makeRawEmail(opts: {
   to: string;
   from: string;
@@ -50,7 +55,7 @@ function makeRawEmail(opts: {
   const lines = [
     `To: ${opts.to}`,
     `From: ${opts.from}`,
-    `Subject: ${opts.subject}`,
+    `Subject: ${encodeHeader(opts.subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: text/plain; charset=UTF-8',
   ];
