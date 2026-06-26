@@ -49,8 +49,6 @@ export default function SequenceList({ rows }: { rows: Row[] }) {
   async function handleSend() {
     const toSend = unsentIds.filter((id) => selected.has(id));
     if (toSend.length === 0) return;
-    if (!confirm(`Send sequences to ${toSend.length} prospect${toSend.length !== 1 ? "s" : ""}?`)) return;
-
     setSendState("sending");
     setProgress({ sent: 0, failed: 0, total: toSend.length });
     let sent = 0;

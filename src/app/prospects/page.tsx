@@ -205,7 +205,6 @@ export default function ProspectsPage() {
 
   const handleSendSelected = async () => {
     if (selectedReadyIds.length === 0) return;
-    if (!confirm(`Send sequences to ${selectedReadyIds.length} prospect${selectedReadyIds.length !== 1 ? "s" : ""}?`)) return;
     setSendState("sending");
     setSendProgress({ sent: 0, failed: 0, total: selectedReadyIds.length });
     let sent = 0;
