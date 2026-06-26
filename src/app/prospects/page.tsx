@@ -87,7 +87,7 @@ export default function ProspectsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [retryingIds, setRetryingIds] = useState<Set<number>>(new Set());
-  const [sendState, setSendState] = useState<"idle" | "sending" | "done">("idle");
+  const [sendState, setSendState] = useState<"idle" | "confirming" | "sending" | "done">("idle");
   const [sendProgress, setSendProgress] = useState({ sent: 0, failed: 0, total: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -236,12 +236,30 @@ export default function ProspectsPage() {
           {/* Action bar — appears when ready rows are checked */}
           {selected.length > 0 && selectedReadyIds.length > 0 && sendState === "idle" && (
             <Button
-              onClick={handleSendSelected}
+              onClick={() => setSendState("confirming")}
               className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
             >
               <Send className="w-4 h-4" />
               Send Selected ({selectedReadyIds.length})
             </Button>
+          )}
+          {sendState === "confirming" && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600">Send to {selectedReadyIds.length} prospect{selectedReadyIds.length !== 1 ? "s" : ""}?</span>
+              <Button
+                onClick={handleSendSelected}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm h-9 px-3"
+              >
+                Confirm
+              </Button>
+              <Button
+                onClick={() => setSendState("idle")}
+                variant="outline"
+                className="h-9 px-3"
+              >
+                Cancel
+              </Button>
+            </div>
           )}
           {sendState === "sending" && (
             <div className="flex items-center gap-2 text-sm text-slate-600">

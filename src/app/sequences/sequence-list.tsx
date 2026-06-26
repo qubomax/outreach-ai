@@ -19,7 +19,7 @@ export default function SequenceList({ rows }: { rows: Row[] }) {
   const unsentIds = rows.filter((r) => r.pushStatus !== "pushed").map((r) => r.id);
 
   const [selected, setSelected] = useState<Set<number>>(new Set(unsentIds));
-  const [sendState, setSendState] = useState<"idle" | "sending" | "done">("idle");
+  const [sendState, setSendState] = useState<"idle" | "confirming" | "sending" | "done">("idle");
   const [progress, setProgress] = useState({ sent: 0, failed: 0, total: 0 });
 
   const allUnsentSelected = unsentIds.every((id) => selected.has(id));
@@ -80,13 +80,31 @@ export default function SequenceList({ rows }: { rows: Row[] }) {
           </span>
           {sendState === "idle" && (
             <Button
-              onClick={handleSend}
+              onClick={() => setSendState("confirming")}
               disabled={selectedUnsentCount === 0}
               className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm text-sm disabled:opacity-40"
             >
               <Send className="w-4 h-4" />
               Send Selected ({selectedUnsentCount})
             </Button>
+          )}
+          {sendState === "confirming" && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600">Send to {selectedUnsentCount} prospect{selectedUnsentCount !== 1 ? "s" : ""}?</span>
+              <Button
+                onClick={handleSend}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm text-sm h-8 px-3"
+              >
+                Confirm
+              </Button>
+              <Button
+                onClick={() => setSendState("idle")}
+                variant="outline"
+                className="text-sm h-8 px-3"
+              >
+                Cancel
+              </Button>
+            </div>
           )}
           {sendState === "sending" && (
             <div className="flex items-center gap-2 text-sm text-slate-600">
