@@ -34,24 +34,32 @@ export async function POST(req: NextRequest) {
     .set({ scrapeStatus: 'scraping', updatedAt: new Date() })
     .where(inArray(prospects.id, eligible.map((p) => p.id)));
 
-  // Scrape all in parallel
-  await Promise.all(
-    eligible.map(async (p) => {
-      try {
-        const text = await scrapeWebsite(p.websiteUrl!);
-        await db
-          .update(prospects)
-          .set({ scrapeStatus: 'scraped', scrapedText: text, updatedAt: new Date() })
-          .where(eq(prospects.id, p.id));
-      } catch (err) {
-        console.error(`Jina scrape failed for prospect ${p.id}:`, err);
-        await db
-          .update(prospects)
-          .set({ scrapeStatus: 'failed', updatedAt: new Date() })
-          .where(eq(prospects.id, p.id));
-      }
-    })
-  );
+  // Scrape in batches of 5 to avoid Jina rate limits
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < eligible.length; i += BATCH_SIZE) {
+    const batch = eligible.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (p) => {
+        try {
+          const text = await scrapeWebsite(p.websiteUrl!);
+          await db
+            .update(prospects)
+            .set({ scrapeStatus: 'scraped', scrapedText: text, updatedAt: new Date() })
+            .where(eq(prospects.id, p.id));
+        } catch (err) {
+          console.error(`Jina scrape failed for prospect ${p.id}:`, err);
+          await db
+            .update(prospects)
+            .set({ scrapeStatus: 'failed', updatedAt: new Date() })
+            .where(eq(prospects.id, p.id));
+        }
+      })
+    );
+    // Small delay between batches
+    if (i + BATCH_SIZE < eligible.length) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
 
   return NextResponse.json({ scraped: eligible.length });
 }

@@ -142,6 +142,19 @@ export default function ProspectsPage() {
     setRetryingIds((s) => { const n = new Set(s); n.delete(id); return n; });
   };
 
+  const retryAllFailed = async () => {
+    const failedIds = prospects
+      .filter((p) => getDisplayStatus(p) === "failed")
+      .map((p) => p.id);
+    if (failedIds.length === 0) return;
+    await fetch("/api/scrape", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prospectIds: failedIds, force: true }),
+    });
+    await loadProspects();
+  };
+
   const startScraping = async (ids: number[]) => {
     await fetch("/api/scrape", {
       method: "POST",
@@ -181,6 +194,7 @@ export default function ProspectsPage() {
     setSelected(selected.length === prospects.length ? [] : prospects.map((p) => p.id));
 
   const readyCount = prospects.filter((p) => getDisplayStatus(p) === "ready").length;
+  const failedCount = prospects.filter((p) => getDisplayStatus(p) === "failed").length;
   const selectedReadyIds = selected.filter(
     (id) => getDisplayStatus(prospects.find((p) => p.id === id)!) === "ready"
   );
@@ -253,6 +267,16 @@ export default function ProspectsPage() {
             <span className="text-sm text-slate-500">
               Done — {sendProgress.sent} sent{sendProgress.failed > 0 ? `, ${sendProgress.failed} failed` : ""}
             </span>
+          )}
+          {failedCount > 0 && sendState === "idle" && (
+            <Button
+              onClick={retryAllFailed}
+              variant="outline"
+              className="gap-2 border-red-200 text-red-600 hover:bg-red-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retry All Failed ({failedCount})
+            </Button>
           )}
           <Button
             className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
