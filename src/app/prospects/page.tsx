@@ -100,24 +100,12 @@ export default function ProspectsPage() {
     loadProspects();
   }, [loadProspects]);
 
-  // Single stable interval — scrape queue → generation pipeline
+  // Poll every 2s — refresh list and kick off scrape for pending prospects
   useEffect(() => {
     const interval = setInterval(async () => {
       const res = await fetch("/api/prospects");
       if (!res.ok) return;
-      const all: Prospect[] = await res.json();
-
-      const scraping = all.filter((p) => p.scrapeStatus === "scraping");
-
-      // Poll Apify for in-progress scrapes
-      if (scraping.length > 0) {
-        await Promise.all(scraping.map((p) => fetch(`/api/scrape/${p.id}`)));
-      }
-
-      // Refresh after Apify updates
-      const freshRes = await fetch("/api/prospects");
-      if (!freshRes.ok) return;
-      const fresh: Prospect[] = await freshRes.json();
+      const fresh: Prospect[] = await res.json();
       setProspects(fresh);
 
       const isAnyScraping = fresh.some((p) => p.scrapeStatus === "scraping");
@@ -125,29 +113,18 @@ export default function ProspectsPage() {
       const pendingIds = fresh
         .filter((p) => p.scrapeStatus === "pending" && p.websiteUrl)
         .map((p) => p.id);
-      const needsGeneration = fresh.some(
-        (p) => p.scrapeStatus === "scraped" && p.generateStatus === "pending"
-      );
 
-      if (!isAnyScraping && pendingIds.length > 0) {
-        // Kick off next scrape in the queue
+      if (!isAnyScraping && !isAnyGenerating && pendingIds.length > 0) {
         await fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prospectIds: pendingIds }),
         });
-        const nextRes = await fetch("/api/prospects");
-        if (nextRes.ok) setProspects(await nextRes.json());
-      } else if (!isAnyScraping && !isAnyGenerating && needsGeneration) {
-        // All scraping done — trigger Claude generation for scraped prospects
-        await fetch("/api/generate", { method: "POST" });
-        const genRes = await fetch("/api/prospects");
-        if (genRes.ok) setProspects(await genRes.json());
       }
-    }, 5000);
+    }, 2000);
 
     return () => clearInterval(interval);
-  }, []); // Stable — no stale closure issues
+  }, []);
 
   const retryScrape = async (id: number) => {
     setRetryingIds((s) => new Set(s).add(id));
