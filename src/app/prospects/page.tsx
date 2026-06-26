@@ -129,14 +129,16 @@ export default function ProspectsPage() {
         (p) => p.scrapeStatus === "scraped" && p.generateStatus === "pending"
       );
 
+      // Scraping and generation run independently — don't wait for each other
       const idsToScrape = [...pendingIds, ...stuckIds];
-      if (!isActivelyScrapingSome && !isAnyGenerating && idsToScrape.length > 0) {
+      if (!isActivelyScrapingSome && idsToScrape.length > 0) {
         await fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prospectIds: idsToScrape }),
         });
-      } else if (!isActivelyScrapingSome && !isAnyGenerating && needsGeneration) {
+      }
+      if (!isAnyGenerating && needsGeneration) {
         await fetch("/api/generate", { method: "POST" });
       }
     }, 2000);
