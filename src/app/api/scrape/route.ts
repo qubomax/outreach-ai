@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { prospectIds } = await req.json() as { prospectIds: number[] };
+  const { prospectIds, force } = await req.json() as { prospectIds: number[]; force?: boolean };
   const { apifyApiKey: apiKey } = await getUserSettings(userId);
 
   const rows = await db
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   const eligible = rows.filter(
-    (p) => p.userId === userId && p.websiteUrl && p.scrapeStatus === 'pending'
+    (p) => p.userId === userId && p.websiteUrl && (p.scrapeStatus === 'pending' || (force && p.scrapeStatus === 'failed'))
   );
 
   if (eligible.length === 0) {

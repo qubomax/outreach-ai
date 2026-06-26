@@ -152,7 +152,7 @@ export default function ProspectsPage() {
     await fetch("/api/scrape", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prospectIds: [id] }),
+      body: JSON.stringify({ prospectIds: [id], force: true }),
     });
     await loadProspects();
     setRetryingIds((s) => { const n = new Set(s); n.delete(id); return n; });
