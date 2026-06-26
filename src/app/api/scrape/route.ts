@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { prospects } from '@/lib/db/schema';
+import { prospects, emailSequences } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { scrapeWebsite } from '@/lib/jina';
+import { generateBrief } from '@/lib/agents/research-agent';
+import { generateSequence } from '@/lib/agents/sequence-agent';
+import { getUserSettings } from '@/lib/user-settings';
 import { getAuthUserId } from '@/lib/auth';
 
 export const maxDuration = 60;
 
-// Max prospects to process per function call (prevents Vercel timeout)
-const MAX_PER_CALL = 10;
-const BATCH_SIZE = 3;
-const STUCK_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+// Process up to 5 prospects per call, each going scrape → generate in parallel
+const MAX_PER_CALL = 5;
+const STUCK_THRESHOLD_MS = 2 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   let userId: string;
@@ -26,52 +28,107 @@ export async function POST(req: NextRequest) {
 
   const stuckCutoff = new Date(Date.now() - STUCK_THRESHOLD_MS);
 
-  // Eligible = pending, stuck-scraping (> 2 min), or failed (if force)
   const eligible = rows
     .filter(
       (p) =>
         p.userId === userId &&
         p.websiteUrl &&
-        (p.scrapeStatus === 'pending' ||
+        (
+          // Needs scraping
+          p.scrapeStatus === 'pending' ||
           (p.scrapeStatus === 'scraping' && p.updatedAt < stuckCutoff) ||
-          (force && p.scrapeStatus === 'failed'))
+          (force && p.scrapeStatus === 'failed') ||
+          // Already scraped but generation failed or pending (catch-up)
+          (p.scrapeStatus === 'scraped' &&
+            (p.generateStatus === 'pending' || p.generateStatus === 'failed'))
+        )
     )
     .slice(0, MAX_PER_CALL);
 
   if (eligible.length === 0) {
-    return NextResponse.json({ scraped: 0 });
+    return NextResponse.json({ processed: 0 });
   }
 
-  // Mark only this batch as scraping
-  await db
-    .update(prospects)
-    .set({ scrapeStatus: 'scraping', updatedAt: new Date() })
-    .where(inArray(prospects.id, eligible.map((p) => p.id)));
+  const settings = await getUserSettings(userId);
 
-  // Scrape in batches of 5 to avoid Jina rate limits
-  for (let i = 0; i < eligible.length; i += BATCH_SIZE) {
-    const batch = eligible.slice(i, i + BATCH_SIZE);
-    await Promise.all(
-      batch.map(async (p) => {
-        try {
-          const text = await scrapeWebsite(p.websiteUrl!);
+  // Mark all that need scraping as scraping (skip already-scraped ones)
+  const needsScrape = eligible.filter((p) => p.scrapeStatus !== 'scraped');
+  if (needsScrape.length > 0) {
+    await db
+      .update(prospects)
+      .set({ scrapeStatus: 'scraping', updatedAt: new Date() })
+      .where(inArray(prospects.id, needsScrape.map((p) => p.id)));
+  }
+
+  // Each prospect runs its full pipeline in parallel: scrape → generate
+  await Promise.all(
+    eligible.map(async (p) => {
+      try {
+        // Step 1: Scrape (skip if already scraped)
+        let text = p.scrapedText;
+        if (p.scrapeStatus !== 'scraped' || !text) {
+          text = await scrapeWebsite(p.websiteUrl!);
           await db
             .update(prospects)
             .set({ scrapeStatus: 'scraped', scrapedText: text, updatedAt: new Date() })
             .where(eq(prospects.id, p.id));
-        } catch (err) {
-          console.error(`Jina scrape failed for prospect ${p.id}:`, err);
+        }
+
+        // Step 2: Generate brief + sequence immediately
+        await db
+          .update(prospects)
+          .set({ generateStatus: 'generating', updatedAt: new Date() })
+          .where(eq(prospects.id, p.id));
+
+        const brief = await generateBrief(text!);
+        await db
+          .update(prospects)
+          .set({ prospectBrief: brief, updatedAt: new Date() })
+          .where(eq(prospects.id, p.id));
+
+        const steps = await generateSequence(
+          brief,
+          p.firstName,
+          settings.senderName,
+          settings.companyName,
+          settings.valueProposition
+        );
+
+        await db.insert(emailSequences).values(
+          steps.map((s) => ({
+            prospectId: p.id,
+            userId,
+            stepNumber: s.stepNumber,
+            subject: s.subject,
+            body: s.body,
+            delayDays: s.delayDays,
+          }))
+        );
+
+        await db
+          .update(prospects)
+          .set({ generateStatus: 'generated', updatedAt: new Date() })
+          .where(eq(prospects.id, p.id));
+      } catch (err) {
+        console.error(`Pipeline failed for prospect ${p.id}:`, err);
+        // If scrape failed, mark scrape as failed
+        // If generation failed after scrape, mark generate as failed
+        const [current] = await db.select({ scrapeStatus: prospects.scrapeStatus })
+          .from(prospects).where(eq(prospects.id, p.id)).limit(1);
+        if (current?.scrapeStatus !== 'scraped') {
           await db
             .update(prospects)
             .set({ scrapeStatus: 'failed', updatedAt: new Date() })
             .where(eq(prospects.id, p.id));
+        } else {
+          await db
+            .update(prospects)
+            .set({ generateStatus: 'failed', updatedAt: new Date() })
+            .where(eq(prospects.id, p.id));
         }
-      })
-    );
-    if (i + BATCH_SIZE < eligible.length) {
-      await new Promise((r) => setTimeout(r, 500));
-    }
-  }
+      }
+    })
+  );
 
-  return NextResponse.json({ scraped: eligible.length });
+  return NextResponse.json({ processed: eligible.length });
 }

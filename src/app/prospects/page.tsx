@@ -111,35 +111,44 @@ export default function ProspectsPage() {
 
       const now = Date.now();
       const STUCK_MS = 2 * 60 * 1000;
-      // Actively scraping = updated within last 2 minutes
-      const isActivelyScrapingSome = fresh.some(
-        (p) => p.scrapeStatus === "scraping" && now - new Date(p.updatedAt).getTime() < STUCK_MS
+
+      // Actively in-progress = marked scraping/generating and updated within last 2 minutes
+      const isActivePipeline = fresh.some(
+        (p) =>
+          (p.scrapeStatus === "scraping" || p.generateStatus === "generating") &&
+          now - new Date(p.updatedAt).getTime() < STUCK_MS
       );
-      const isAnyGenerating = fresh.some((p) => p.generateStatus === "generating");
+
       const pendingIds = fresh
         .filter((p) => p.scrapeStatus === "pending" && p.websiteUrl)
         .map((p) => p.id);
-      // Stuck = marked scraping but not updated in > 2 minutes (function timed out)
+
+      // Stuck = in scraping/generating state but not updated in > 2 minutes
       const stuckIds = fresh
         .filter(
-          (p) => p.scrapeStatus === "scraping" && now - new Date(p.updatedAt).getTime() >= STUCK_MS
+          (p) =>
+            (p.scrapeStatus === "scraping" || p.generateStatus === "generating") &&
+            now - new Date(p.updatedAt).getTime() >= STUCK_MS
         )
         .map((p) => p.id);
-      const needsGeneration = fresh.some(
-        (p) => p.scrapeStatus === "scraped" && p.generateStatus === "pending"
-      );
 
-      // Scraping and generation run independently — don't wait for each other
-      const idsToScrape = [...pendingIds, ...stuckIds];
-      if (!isActivelyScrapingSome && idsToScrape.length > 0) {
-        await fetch("/api/scrape", {
+      // Also pick up any that got scraped but generation failed (catch-up)
+      const needsCatchup = fresh
+        .filter(
+          (p) =>
+            p.scrapeStatus === "scraped" &&
+            (p.generateStatus === "pending" || p.generateStatus === "failed")
+        )
+        .map((p) => p.id);
+
+      const idsToProcess = [...new Set([...pendingIds, ...stuckIds, ...needsCatchup])];
+
+      if (!isActivePipeline && idsToProcess.length > 0) {
+        fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prospectIds: idsToScrape }),
+          body: JSON.stringify({ prospectIds: idsToProcess }),
         });
-      }
-      if (!isAnyGenerating && needsGeneration) {
-        await fetch("/api/generate", { method: "POST" });
       }
     }, 2000);
 
