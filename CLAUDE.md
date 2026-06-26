@@ -17,7 +17,7 @@ Cold Hero automates the full pipeline from research to delivery:
 
 1. User connects their Gmail or Outlook inbox (OAuth, one-time setup)
 2. User uploads a CSV of prospects (name, email, company, website URL)
-3. App scrapes each company website via Apify (Cold Hero's account — users never touch Apify)
+3. App scrapes each company website via Jina Reader (free, no API key, synchronous)
 4. Claude summarizes the scrape into a 150-word prospect brief
 5. Claude generates a personalized 3-step email sequence per prospect
 6. User reviews and edits sequences in the UI
@@ -37,7 +37,7 @@ Cold Hero automates the full pipeline from research to delivery:
 | Auth | Clerk |
 | Database | Neon (serverless Postgres) |
 | ORM | Drizzle |
-| Web scraping | Apify — `apify/website-content-crawler` (Cold Hero's account) |
+| Web scraping | Jina Reader — `r.jina.ai/{url}` (free, no API key) |
 | AI | Anthropic SDK — `claude-sonnet-4-6` |
 | Email sending | Gmail API / Microsoft Graph API (user's connected inbox) |
 | Email scheduling | Vercel Cron + DB scheduled_emails table |
@@ -80,7 +80,7 @@ outreach-ai/
 │   │   ├── account/page.tsx         # Billing / plan management
 │   │   └── api/
 │   │       ├── prospects/           # CRUD + CSV upload
-│   │       ├── scrape/              # Trigger Apify, poll for completion
+│   │       ├── scrape/              # Scrape via Jina Reader, trigger generation
 │   │       ├── generate/            # Generate brief + sequence via Claude
 │   │       ├── send/                # Send Email 1 via Gmail/Outlook API
 │   │       ├── cron/send-scheduled/ # Vercel Cron: send Email 2 & 3 on schedule
@@ -95,9 +95,9 @@ outreach-ai/
 │   │   │   ├── index.ts             # Neon connection + Drizzle client
 │   │   │   └── schema.ts            # All table definitions
 │   │   ├── agents/
-│   │   │   ├── research-agent.ts    # Apify scrape → prospect brief
+│   │   │   ├── research-agent.ts    # Scraped text → prospect brief
 │   │   │   └── sequence-agent.ts    # Brief → email sequence
-│   │   ├── apify.ts                 # Apify scraping client
+│   │   ├── jina.ts                  # Jina Reader scraping client
 │   │   ├── claude.ts                # Anthropic SDK client
 │   │   ├── gmail.ts                 # Gmail API client (send, check replies)
 │   │   ├── user-settings.ts         # Fetch user settings from DB
@@ -107,7 +107,7 @@ outreach-ai/
 ├── scripts/
 │   ├── seed.ts                      # Insert test prospects without the UI
 │   ├── clear-prospects.ts           # Clear prospect/sequence data (never deletes users)
-│   └── test-apify.ts                # Run a scrape manually to verify output
+│   └── clear-prospects.ts           # Clear prospect/sequence data (never deletes users)
 └── .env.local                       # API keys (gitignored)
 ```
 
@@ -117,8 +117,8 @@ outreach-ai/
 
 - `src/lib/db/schema.ts` — all Drizzle table definitions (check before any DB changes)
 - `src/lib/claude.ts` — Anthropic SDK client
-- `src/lib/apify.ts` — Apify scraping client
-- `src/lib/gmail.ts` — Gmail API client (to be built)
+- `src/lib/jina.ts` — Jina Reader scraping client
+- `src/lib/gmail.ts` — Gmail API client (send, check replies)
 - `src/lib/agents/research-agent.ts` — orchestrates scrape → brief
 - `src/lib/agents/sequence-agent.ts` — orchestrates brief → sequence
 - `prompts/prospect-brief.md` — prompt: scraped text → brief
@@ -152,13 +152,15 @@ outreach-ai/
 
 ---
 
-## Async Scraping Pattern
+## Scraping Pattern
 
-Apify jobs are async — never scrape synchronously in an API route (Vercel timeout).
+Jina Reader is synchronous — scrapes all prospects in parallel, no job IDs or polling.
 
 ```
-POST /api/scrape      → trigger Apify job → store job ID → return immediately
-GET  /api/scrape/[id] → poll Apify for status → when done, store result → trigger generation
+POST /api/scrape { prospectIds }
+  → fetch r.jina.ai/{url} for each prospect in parallel (2-5s)
+  → mark each as scraped with text
+  → frontend polling detects scraped+pending and calls POST /api/generate
 ```
 
 ---
@@ -182,7 +184,6 @@ User clicks Send
 
 ```
 ANTHROPIC_API_KEY=
-APIFY_API_KEY=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
@@ -212,24 +213,27 @@ CRON_SECRET=
 - [x] Stripe billing (3 tiers: $49 / $149 / $399)
 - [x] Dashboard stats (prospects, sequences, pushed count)
 
-### Phase 2 — Gmail sending (current focus)
-- [ ] Remove Instantly integration (push button, instantly.ts, API key from settings)
-- [ ] Add `scheduled_emails` table to schema + migrate
-- [ ] Add `gmailAccessToken` / `gmailRefreshToken` columns to `users` table
-- [ ] Gmail OAuth flow: connect inbox in Settings
-- [ ] `src/lib/gmail.ts` — send email, check for replies
-- [ ] POST /api/send — send Email 1 + schedule Email 2 & 3
-- [ ] GET /api/cron/send-scheduled — Vercel Cron job (hourly)
-- [ ] Reply detection before sending Email 2 & 3
-- [ ] Update sequence editor: "Send" button replaces "Push to Instantly"
-- [ ] Dashboard: show sent/replied counts from DB
+### Phase 2 — Gmail sending (DONE)
+- [x] Remove Instantly integration
+- [x] Add `scheduled_emails` table to schema
+- [x] Gmail OAuth flow: connect inbox in Settings
+- [x] `src/lib/gmail.ts` — send email, check for replies
+- [x] POST /api/send — send Email 1 + schedule Email 2 & 3
+- [x] GET /api/cron/send-scheduled — Vercel Cron job (daily)
+- [x] Reply detection before sending Email 2 & 3
+- [x] Dashboard: sent/replied counts from DB
+
+### Phase 2.5 — Scraping upgrade (DONE)
+- [x] Replace Apify with Jina Reader (free, synchronous, no API key)
+- [x] Parallel scraping of all prospects at once
+- [x] Bulk send with checkboxes + inline confirm on Sequences + Prospects pages
 
 ### Phase 3 — Polish
 - [ ] Outlook / Microsoft Graph support
-- [ ] Bulk send all approved sequences
 - [ ] Unsubscribe link handling
 - [ ] Per-prospect status: Sent / Replied / Completed / Failed
 - [ ] Regenerate sequence button in editor
+- [ ] Google OAuth app verification (for real users to connect Gmail)
 
 ---
 

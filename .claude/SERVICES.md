@@ -18,28 +18,14 @@ each service is registered under so you can audit and migrate accounts.
 
 ---
 
-## Apify
+## Jina Reader (Web Scraping)
 
 | Field | Value |
 |-------|-------|
 | Purpose | Scrapes company websites for prospect research |
-| Dashboard | https://console.apify.com |
-| Signed up with | sefak.kahriman@gmail.com (personal — migrate) |
-| Env var | `APIFY_API_KEY` |
-| Actor used | `apify/website-content-crawler` |
-| Notes | Used in `/api/scrape` → `src/lib/apify.ts` |
-
----
-
-## Instantly.ai
-
-| Field | Value |
-|-------|-------|
-| Purpose | Email campaign delivery — sends the generated sequences |
-| Dashboard | https://app.instantly.ai |
-| Signed up with | sefak.kahriman@gmail.com (personal — migrate) |
-| Env vars | `INSTANTLY_API_KEY`, `INSTANTLY_CAMPAIGN_ID` |
-| Notes | Used in `/api/instantly/push` → `src/lib/instantly.ts`. Campaign ID is the target campaign leads get pushed into. |
+| API | `https://r.jina.ai/{url}` |
+| Cost | Free, no API key required |
+| Notes | Used in `/api/scrape` → `src/lib/jina.ts`. Synchronous, parallel, 2-5s per site. Replaced Apify. |
 
 ---
 
@@ -85,9 +71,7 @@ When you create a dedicated business account, update each service above:
 
 - [ ] Create new email (e.g. hello@yourdomain.com or ops@yourdomain.com)
 - [ ] Anthropic — new account or add new API key under org
-- [ ] Apify — new account, new API key
-- [ ] Instantly.ai — new account, reconnect sending mailbox, update campaign ID
-- [ ] Neon — new project or transfer ownership
+- [x] Neon — migrated to Qubomax LLC account
 - [ ] Clerk — new application (existing users will not carry over — plan a migration if you have real users)
 - [ ] Vercel — new account or add project to org
 - [ ] Update `.env.local` with all new keys
@@ -99,9 +83,6 @@ When you create a dedicated business account, update each service above:
 
 ```
 ANTHROPIC_API_KEY=
-APIFY_API_KEY=
-INSTANTLY_API_KEY=
-INSTANTLY_CAMPAIGN_ID=
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in

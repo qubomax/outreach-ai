@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:clear": "tsx scripts/clear-prospects.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

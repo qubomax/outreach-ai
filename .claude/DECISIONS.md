@@ -7,11 +7,11 @@ friction. Users had to connect API keys, set up campaigns, and manage two paid
 tools. Decision: Cold Hero owns the full loop — research, writing, AND sending.
 Users connect their Gmail inbox via OAuth. Instantly.ai integration is removed.
 
-## Apify stays but is server-side only
-**Date:** 2026-06-25
-Apify is kept for website scraping but is hidden infrastructure. Cold Hero uses
-one Apify account (the founder's). Users never see or configure Apify. The cost
-is baked into Cold Hero's pricing (~$0.50-2 per prospect scraped).
+## Jina Reader replaces Apify for web scraping
+**Date:** 2026-06-26
+Apify was async, slow (15-20s per site), and cost money. Replaced with Jina Reader
+(`r.jina.ai/{url}`) — free, no API key, synchronous, 2-5s per site. All prospects
+scraped in parallel. Eliminated job IDs, polling, and the APIFY_API_KEY env var.
 
 ## Gmail first, Outlook later
 **Date:** 2026-06-25
