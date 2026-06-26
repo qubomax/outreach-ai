@@ -129,7 +129,14 @@ export default async function DashboardPage() {
             {campaignStats ? (
               <p className="text-3xl font-bold text-slate-900">{campaignStats.replyRate}%</p>
             ) : (
-              <p className="text-3xl font-bold text-slate-300">—</p>
+              <a
+                href="https://app.instantly.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 mt-1"
+              >
+                View in Instantly <ArrowRight className="w-3 h-3" />
+              </a>
             )}
           </CardContent>
         </Card>
@@ -171,7 +178,16 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       ) : (
-        !settings.instantlyApiKey && (
+        settings.instantlyApiKey && settings.instantlyCampaignId ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 flex items-center justify-between">
+            <p className="text-sm text-slate-500">Analytics API not available on your current Instantly plan.</p>
+            <a href="https://app.instantly.ai" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="text-xs border-slate-300 gap-1">
+                View in Instantly <ArrowRight className="w-3 h-3" />
+              </Button>
+            </a>
+          </div>
+        ) : !settings.instantlyApiKey && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 flex items-center justify-between">
             <p className="text-sm text-slate-500">Add your Instantly API key in Settings to see campaign stats.</p>
             <Link href="/settings">
