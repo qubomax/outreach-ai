@@ -16,12 +16,10 @@ export async function GET() {
   if (!user) return NextResponse.json({});
 
   return NextResponse.json({
-    apifyApiKey: user.apifyApiKey ?? '',
-    instantlyApiKey: user.instantlyApiKey ?? '',
-    instantlyCampaignId: user.instantlyCampaignId ?? '',
     senderName: user.senderName ?? '',
     companyName: user.companyName ?? '',
     valueProposition: user.valueProposition ?? '',
+    gmailEmail: user.gmailEmail ?? null,
   });
 }
 
@@ -35,7 +33,7 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
 
-  const allowed = ['apifyApiKey', 'instantlyApiKey', 'instantlyCampaignId', 'senderName', 'companyName', 'valueProposition'] as const;
+  const allowed = ['senderName', 'companyName', 'valueProposition'] as const;
   const update: Partial<Record<typeof allowed[number], string>> = {};
   for (const key of allowed) {
     if (key in body) update[key] = body[key];

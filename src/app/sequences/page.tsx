@@ -84,7 +84,7 @@ export default async function SequencesPage() {
                         : "bg-emerald-50 text-emerald-600"
                     }`}
                   >
-                    {isPushed ? "Pushed to Instantly" : "Ready to push"}
+                    {isPushed ? "Sent" : "Ready"}
                   </span>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </div>

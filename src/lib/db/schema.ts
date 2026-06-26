@@ -37,6 +37,11 @@ export const users = pgTable('users', {
   senderTitle: text('sender_title'),
   companyName: text('company_name'),
   valueProposition: text('value_proposition'),
+  // Gmail OAuth
+  gmailEmail: text('gmail_email'),
+  gmailAccessToken: text('gmail_access_token'),
+  gmailRefreshToken: text('gmail_refresh_token'),
+  gmailTokenExpiry: timestamp('gmail_token_expiry'),
   // Stripe billing
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),

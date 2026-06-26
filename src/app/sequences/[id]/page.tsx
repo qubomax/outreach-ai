@@ -51,9 +51,9 @@ export default function SequencePage({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<EmailStep | null>(null);
   const [saving, setSaving] = useState(false);
-  const [pushing, setPushing] = useState(false);
-  const [pushed, setPushed] = useState(false);
-  const [pushError, setPushError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/sequences/${id}`)
@@ -65,7 +65,7 @@ export default function SequencePage({
         if (!data) return;
         setProspect(data.prospect);
         setSteps(data.steps);
-        if (data.steps[0]?.pushStatus === "pushed") setPushed(true);
+        if (data.steps[0]?.pushStatus === "pushed") setSent(true);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -94,21 +94,21 @@ export default function SequencePage({
     setSaving(false);
   };
 
-  const pushToInstantly = async () => {
-    setPushing(true);
-    setPushError(null);
-    const res = await fetch("/api/instantly/push", {
+  const sendSequence = async () => {
+    setSending(true);
+    setSendError(null);
+    const res = await fetch("/api/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prospectId: parseInt(id) }),
     });
     if (res.ok) {
-      setPushed(true);
+      setSent(true);
     } else {
       const json = await res.json();
-      setPushError(json.error ?? "Push failed — check your Instantly API key.");
+      setSendError(json.error ?? "Send failed — make sure your Gmail is connected in Settings.");
     }
-    setPushing(false);
+    setSending(false);
   };
 
   if (loading) {
@@ -161,35 +161,35 @@ export default function SequencePage({
 
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">
-            {pushed && (
+            {sent && (
               <Button
-                onClick={pushToInstantly}
-                disabled={pushing}
+                onClick={sendSequence}
+                disabled={sending}
                 variant="outline"
                 className="gap-2 border-slate-300 text-slate-600 hover:text-slate-900"
               >
-                {pushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Repush
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Resend
               </Button>
             )}
             <Button
-              onClick={pushToInstantly}
-              disabled={pushing || pushed}
+              onClick={sendSequence}
+              disabled={sending || sent}
               className={`gap-2 shadow-sm ${
-                pushed
+                sent
                   ? "bg-emerald-600 hover:bg-emerald-600 text-white cursor-default"
                   : "bg-indigo-600 hover:bg-indigo-700 text-white"
               }`}
             >
-              {pushing ? (
+              {sending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              {pushed ? "Pushed to Instantly" : pushing ? "Pushing..." : "Push to Instantly"}
+              {sent ? "Sent" : sending ? "Sending..." : "Send"}
             </Button>
           </div>
-          {pushError && <p className="text-xs text-red-500 max-w-xs text-right">{pushError}</p>}
+          {sendError && <p className="text-xs text-red-500 max-w-xs text-right">{sendError}</p>}
         </div>
       </div>
 
