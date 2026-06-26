@@ -53,12 +53,5 @@ export async function POST(req: NextRequest) {
     })
   );
 
-  // Trigger generation for all freshly scraped prospects
-  const origin = req.headers.get('origin') ?? req.nextUrl.origin;
-  fetch(`${origin}/api/generate`, {
-    method: 'POST',
-    headers: { cookie: req.headers.get('cookie') ?? '' },
-  }).catch(() => {});
-
   return NextResponse.json({ scraped: eligible.length });
 }

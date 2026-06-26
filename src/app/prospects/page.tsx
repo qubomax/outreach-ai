@@ -113,6 +113,9 @@ export default function ProspectsPage() {
       const pendingIds = fresh
         .filter((p) => p.scrapeStatus === "pending" && p.websiteUrl)
         .map((p) => p.id);
+      const needsGeneration = fresh.some(
+        (p) => p.scrapeStatus === "scraped" && p.generateStatus === "pending"
+      );
 
       if (!isAnyScraping && !isAnyGenerating && pendingIds.length > 0) {
         await fetch("/api/scrape", {
@@ -120,6 +123,8 @@ export default function ProspectsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prospectIds: pendingIds }),
         });
+      } else if (!isAnyScraping && !isAnyGenerating && needsGeneration) {
+        await fetch("/api/generate", { method: "POST" });
       }
     }, 2000);
 
