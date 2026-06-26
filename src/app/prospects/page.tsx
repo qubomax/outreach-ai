@@ -64,7 +64,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode; colo
     color: "text-blue-500",
   },
   ready: {
-    label: "Ready to push",
+    label: "Ready to send",
     icon: <CheckCircle2 className="w-3.5 h-3.5" />,
     color: "text-emerald-600",
   },
@@ -87,6 +87,8 @@ export default function ProspectsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [retryingIds, setRetryingIds] = useState<Set<number>>(new Set());
+  const [sendState, setSendState] = useState<"idle" | "sending" | "done">("idle");
+  const [sendProgress, setSendProgress] = useState({ sent: 0, failed: 0, total: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadProspects = useCallback(async () => {
@@ -197,6 +199,30 @@ export default function ProspectsPage() {
     setSelected(selected.length === prospects.length ? [] : prospects.map((p) => p.id));
 
   const readyCount = prospects.filter((p) => getDisplayStatus(p) === "ready").length;
+  const selectedReadyIds = selected.filter(
+    (id) => getDisplayStatus(prospects.find((p) => p.id === id)!) === "ready"
+  );
+
+  const handleSendSelected = async () => {
+    if (selectedReadyIds.length === 0) return;
+    if (!confirm(`Send sequences to ${selectedReadyIds.length} prospect${selectedReadyIds.length !== 1 ? "s" : ""}?`)) return;
+    setSendState("sending");
+    setSendProgress({ sent: 0, failed: 0, total: selectedReadyIds.length });
+    let sent = 0;
+    let failed = 0;
+    for (const id of selectedReadyIds) {
+      const res = await fetch("/api/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prospectId: id }),
+      });
+      if (res.ok) sent++; else failed++;
+      setSendProgress({ sent, failed, total: selectedReadyIds.length });
+    }
+    setSendState("done");
+    setSelected([]);
+    await loadProspects();
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -207,7 +233,28 @@ export default function ProspectsPage() {
             {prospects.length} prospects · {readyCount} sequences ready
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {/* Action bar — appears when ready rows are checked */}
+          {selected.length > 0 && selectedReadyIds.length > 0 && sendState === "idle" && (
+            <Button
+              onClick={handleSendSelected}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
+            >
+              <Send className="w-4 h-4" />
+              Send Selected ({selectedReadyIds.length})
+            </Button>
+          )}
+          {sendState === "sending" && (
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
+              Sending {sendProgress.sent + sendProgress.failed} / {sendProgress.total}…
+            </div>
+          )}
+          {sendState === "done" && (
+            <span className="text-sm text-slate-500">
+              Done — {sendProgress.sent} sent{sendProgress.failed > 0 ? `, ${sendProgress.failed} failed` : ""}
+            </span>
+          )}
           <Button
             className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
             onClick={() => fileInputRef.current?.click()}
