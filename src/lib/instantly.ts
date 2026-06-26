@@ -19,11 +19,15 @@ export async function getCampaignStats(
       `${INSTANTLY_BASE}/analytics/campaign/summary?campaign_id=${campaignId}&start_date=${startDate}&end_date=${endDate}`,
       { headers: { Authorization: `Bearer ${apiKey}` } }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`Instantly analytics failed: ${res.status} ${text}`);
+      return null;
+    }
     const data = await res.json();
-    const emailsSent = data.emails_sent ?? 0;
-    const openCount = data.open_count ?? 0;
-    const replyCount = data.reply_count ?? 0;
+    const emailsSent = data.emails_sent ?? data.total_emails_sent ?? 0;
+    const openCount = data.open_count ?? data.total_opens ?? 0;
+    const replyCount = data.reply_count ?? data.total_replies ?? 0;
     return {
       emailsSent,
       openCount,
@@ -31,7 +35,8 @@ export async function getCampaignStats(
       replyCount,
       replyRate: emailsSent > 0 ? Math.round((replyCount / emailsSent) * 100) : 0,
     };
-  } catch {
+  } catch (err) {
+    console.error('getCampaignStats error:', err);
     return null;
   }
 }
