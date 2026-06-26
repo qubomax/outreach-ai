@@ -19,6 +19,7 @@ export async function GET() {
         scrapeStatus: prospects.scrapeStatus,
         generateStatus: prospects.generateStatus,
         createdAt: prospects.createdAt,
+        updatedAt: prospects.updatedAt,
         pushStatus: emailSequences.pushStatus,
       })
       .from(prospects)

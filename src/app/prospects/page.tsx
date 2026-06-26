@@ -29,6 +29,7 @@ interface Prospect {
   generateStatus: GenerateStatus;
   pushStatus: PushStatus;
   createdAt: string;
+  updatedAt: string;
 }
 
 function getDisplayStatus(p: Prospect): string {
@@ -108,22 +109,34 @@ export default function ProspectsPage() {
       const fresh: Prospect[] = await res.json();
       setProspects(fresh);
 
-      const isAnyScraping = fresh.some((p) => p.scrapeStatus === "scraping");
+      const now = Date.now();
+      const STUCK_MS = 2 * 60 * 1000;
+      // Actively scraping = updated within last 2 minutes
+      const isActivelyScrapingSome = fresh.some(
+        (p) => p.scrapeStatus === "scraping" && now - new Date(p.updatedAt).getTime() < STUCK_MS
+      );
       const isAnyGenerating = fresh.some((p) => p.generateStatus === "generating");
       const pendingIds = fresh
         .filter((p) => p.scrapeStatus === "pending" && p.websiteUrl)
+        .map((p) => p.id);
+      // Stuck = marked scraping but not updated in > 2 minutes (function timed out)
+      const stuckIds = fresh
+        .filter(
+          (p) => p.scrapeStatus === "scraping" && now - new Date(p.updatedAt).getTime() >= STUCK_MS
+        )
         .map((p) => p.id);
       const needsGeneration = fresh.some(
         (p) => p.scrapeStatus === "scraped" && p.generateStatus === "pending"
       );
 
-      if (!isAnyScraping && !isAnyGenerating && pendingIds.length > 0) {
+      const idsToScrape = [...pendingIds, ...stuckIds];
+      if (!isActivelyScrapingSome && !isAnyGenerating && idsToScrape.length > 0) {
         await fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prospectIds: pendingIds }),
+          body: JSON.stringify({ prospectIds: idsToScrape }),
         });
-      } else if (!isAnyScraping && !isAnyGenerating && needsGeneration) {
+      } else if (!isActivelyScrapingSome && !isAnyGenerating && needsGeneration) {
         await fetch("/api/generate", { method: "POST" });
       }
     }, 2000);

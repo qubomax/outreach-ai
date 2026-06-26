@@ -7,6 +7,11 @@ import { getAuthUserId } from '@/lib/auth';
 
 export const maxDuration = 60;
 
+// Max prospects to process per function call (prevents Vercel timeout)
+const MAX_PER_CALL = 10;
+const BATCH_SIZE = 5;
+const STUCK_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
 export async function POST(req: NextRequest) {
   let userId: string;
   try {
@@ -19,23 +24,31 @@ export async function POST(req: NextRequest) {
 
   const rows = await db.select().from(prospects).where(inArray(prospects.id, prospectIds));
 
-  const eligible = rows.filter(
-    (p) => p.userId === userId && p.websiteUrl &&
-      (p.scrapeStatus === 'pending' || (force && p.scrapeStatus === 'failed'))
-  );
+  const stuckCutoff = new Date(Date.now() - STUCK_THRESHOLD_MS);
+
+  // Eligible = pending, stuck-scraping (> 2 min), or failed (if force)
+  const eligible = rows
+    .filter(
+      (p) =>
+        p.userId === userId &&
+        p.websiteUrl &&
+        (p.scrapeStatus === 'pending' ||
+          (p.scrapeStatus === 'scraping' && p.updatedAt < stuckCutoff) ||
+          (force && p.scrapeStatus === 'failed'))
+    )
+    .slice(0, MAX_PER_CALL);
 
   if (eligible.length === 0) {
     return NextResponse.json({ scraped: 0 });
   }
 
-  // Mark all as scraping
+  // Mark only this batch as scraping
   await db
     .update(prospects)
     .set({ scrapeStatus: 'scraping', updatedAt: new Date() })
     .where(inArray(prospects.id, eligible.map((p) => p.id)));
 
   // Scrape in batches of 5 to avoid Jina rate limits
-  const BATCH_SIZE = 5;
   for (let i = 0; i < eligible.length; i += BATCH_SIZE) {
     const batch = eligible.slice(i, i + BATCH_SIZE);
     await Promise.all(
@@ -55,7 +68,6 @@ export async function POST(req: NextRequest) {
         }
       })
     );
-    // Small delay between batches
     if (i + BATCH_SIZE < eligible.length) {
       await new Promise((r) => setTimeout(r, 500));
     }

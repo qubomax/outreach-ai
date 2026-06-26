@@ -17,6 +17,9 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Max per call: prevents Vercel timeout and Claude rate limits
+  const MAX_PER_CALL = 5;
+
   const eligible = await db
     .select()
     .from(prospects)
@@ -26,7 +29,8 @@ export async function POST() {
         eq(prospects.scrapeStatus, 'scraped'),
         eq(prospects.generateStatus, 'pending')
       )
-    );
+    )
+    .limit(MAX_PER_CALL);
 
   if (eligible.length === 0) {
     return NextResponse.json({ generated: 0 });
@@ -40,44 +44,43 @@ export async function POST() {
     .where(inArray(prospects.id, eligible.map((p) => p.id)));
 
   let generated = 0;
-  await Promise.all(
-    eligible.map(async (p) => {
-      try {
-        const brief = await generateBrief(p.scrapedText!);
+  // Sequential — avoids Claude rate limits and keeps within 60s timeout
+  for (const p of eligible) {
+    try {
+      const brief = await generateBrief(p.scrapedText!);
 
-        await db
-          .update(prospects)
-          .set({ prospectBrief: brief, updatedAt: new Date() })
-          .where(eq(prospects.id, p.id));
+      await db
+        .update(prospects)
+        .set({ prospectBrief: brief, updatedAt: new Date() })
+        .where(eq(prospects.id, p.id));
 
-        const steps = await generateSequence(brief, p.firstName, settings.senderName, settings.companyName, settings.valueProposition);
+      const steps = await generateSequence(brief, p.firstName, settings.senderName, settings.companyName, settings.valueProposition);
 
-        await db.insert(emailSequences).values(
-          steps.map((s) => ({
-            prospectId: p.id,
-            userId,
-            stepNumber: s.stepNumber,
-            subject: s.subject,
-            body: s.body,
-            delayDays: s.delayDays,
-          }))
-        );
+      await db.insert(emailSequences).values(
+        steps.map((s) => ({
+          prospectId: p.id,
+          userId,
+          stepNumber: s.stepNumber,
+          subject: s.subject,
+          body: s.body,
+          delayDays: s.delayDays,
+        }))
+      );
 
-        await db
-          .update(prospects)
-          .set({ generateStatus: 'generated', updatedAt: new Date() })
-          .where(eq(prospects.id, p.id));
+      await db
+        .update(prospects)
+        .set({ generateStatus: 'generated', updatedAt: new Date() })
+        .where(eq(prospects.id, p.id));
 
-        generated++;
-      } catch (err) {
-        console.error(`Generation failed for prospect ${p.id}:`, err);
-        await db
-          .update(prospects)
-          .set({ generateStatus: 'failed', updatedAt: new Date() })
-          .where(eq(prospects.id, p.id));
-      }
-    })
-  );
+      generated++;
+    } catch (err) {
+      console.error(`Generation failed for prospect ${p.id}:`, err);
+      await db
+        .update(prospects)
+        .set({ generateStatus: 'failed', updatedAt: new Date() })
+        .where(eq(prospects.id, p.id));
+    }
+  }
 
   return NextResponse.json({ generated });
 }
