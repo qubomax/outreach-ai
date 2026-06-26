@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { prospects, emailSequences, users } from "@/lib/db/schema";
+import { prospects, emailSequences, scheduledEmails } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,10 +41,13 @@ export default async function DashboardPage() {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const [allProspects, sentSequences, settings] = await Promise.all([
+  const [allProspects, sentSequences, repliedEmails, settings] = await Promise.all([
     db.select().from(prospects).where(eq(prospects.userId, userId)).orderBy(desc(prospects.createdAt)),
     db.select().from(emailSequences).where(
       and(eq(emailSequences.userId, userId), eq(emailSequences.pushStatus, "pushed"), eq(emailSequences.stepNumber, 1))
+    ),
+    db.select().from(scheduledEmails).where(
+      and(eq(scheduledEmails.userId, userId), eq(scheduledEmails.status, "skipped"))
     ),
     getUserSettings(userId),
   ]);
@@ -52,6 +55,8 @@ export default async function DashboardPage() {
   const total = allProspects.length;
   const sequencesGenerated = allProspects.filter((p) => p.generateStatus === "generated").length;
   const sentCount = sentSequences.length;
+  const repliedCount = new Set(repliedEmails.map((e) => e.prospectId)).size;
+  const replyRate = sentCount > 0 ? Math.round((repliedCount / sentCount) * 100) : null;
   const recent = allProspects.slice(0, 5);
 
   return (
@@ -120,7 +125,9 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-slate-300">—</p>
+            <p className="text-3xl font-bold text-slate-900">
+              {replyRate !== null ? `${replyRate}%` : <span className="text-slate-300">—</span>}
+            </p>
           </CardContent>
         </Card>
       </div>

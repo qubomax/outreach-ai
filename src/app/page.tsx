@@ -17,9 +17,9 @@ const STEPS = [
   },
   {
     icon: Send,
-    title: "Push to Instantly in one click",
+    title: "Send directly from your inbox",
     description:
-      "Review and edit sequences in the editor, then push approved leads straight to your Instantly.ai campaign. We handle the research and writing. Instantly handles the sending.",
+      "Review and edit sequences in the editor, then hit Send. Email 1 goes out immediately from your connected Gmail. Follow-ups send automatically if no reply is detected.",
   },
 ];
 
@@ -28,7 +28,7 @@ const PRICING = [
     name: "Starter",
     price: "$49",
     prospects: "200 prospects / mo",
-    features: ["AI prospect research", "3-step sequences", "Instantly.ai push", "Sequence editor"],
+    features: ["AI prospect research", "3-step sequences", "Gmail sending", "Sequence editor"],
     cta: "Start free trial",
     highlight: false,
   },
@@ -36,7 +36,7 @@ const PRICING = [
     name: "Growth",
     price: "$149",
     prospects: "1,000 prospects / mo",
-    features: ["Everything in Starter", "Priority processing", "Bulk push", "Email support"],
+    features: ["Everything in Starter", "Priority processing", "Bulk send", "Email support"],
     cta: "Start free trial",
     highlight: true,
   },
@@ -118,7 +118,7 @@ export default async function LandingPage() {
         </h1>
         <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
           Upload a CSV of prospects. We research every company, write a personalized 3-step
-          email sequence per contact, and push it to Instantly.ai — in minutes, not days.
+          email sequence per contact, and send it directly from your inbox — in minutes, not days.
         </p>
         <div className="flex items-center justify-center gap-4">
           <Link
