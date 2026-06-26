@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Circle,
   Send,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -68,7 +69,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode; colo
     color: "text-emerald-600",
   },
   pushed: {
-    label: "Pushed to Instantly",
+    label: "Sent",
     icon: <Send className="w-3.5 h-3.5" />,
     color: "text-indigo-600",
   },
@@ -85,8 +86,7 @@ export default function ProspectsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [bulkPushing, setBulkPushing] = useState(false);
-  const [pushingIds, setPushingIds] = useState<Set<number>>(new Set());
+  const [retryingIds, setRetryingIds] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadProspects = useCallback(async () => {
@@ -147,46 +147,15 @@ export default function ProspectsPage() {
     return () => clearInterval(interval);
   }, []); // Stable — no stale closure issues
 
-  const bulkPush = async (ids?: number[]) => {
-    const pushableIds = (ids ?? prospects.map((p) => p.id)).filter((id) => {
-      const p = prospects.find((x) => x.id === id);
-      return p && getDisplayStatus(p) === "ready";
-    });
-    if (pushableIds.length === 0) return;
-    setBulkPushing(true);
-    const results = await Promise.all(
-      pushableIds.map((id) =>
-        fetch("/api/instantly/push", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prospectId: id }),
-        }).then(async (r) => ({ id, ok: r.ok, body: await r.text() }))
-      )
-    );
-    const failed = results.filter((r) => !r.ok);
-    if (failed.length > 0) {
-      console.error("Push failed:", failed);
-      alert(`Push failed for ${failed.length} prospect(s):\n${failed.map((f) => f.body).join("\n")}`);
-    }
-    setBulkPushing(false);
-    await loadProspects();
-    setSelected([]);
-  };
-
-  const pushOne = async (id: number) => {
-    setPushingIds((s) => new Set(s).add(id));
-    const res = await fetch("/api/instantly/push", {
+  const retryScrape = async (id: number) => {
+    setRetryingIds((s) => new Set(s).add(id));
+    await fetch("/api/scrape", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prospectId: id }),
+      body: JSON.stringify({ prospectIds: [id] }),
     });
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("Push failed:", body);
-      alert(`Push failed: ${body}`);
-    }
-    setPushingIds((s) => { const n = new Set(s); n.delete(id); return n; });
     await loadProspects();
+    setRetryingIds((s) => { const n = new Set(s); n.delete(id); return n; });
   };
 
   const startScraping = async (ids: number[]) => {
@@ -227,11 +196,6 @@ export default function ProspectsPage() {
   const toggleAll = () =>
     setSelected(selected.length === prospects.length ? [] : prospects.map((p) => p.id));
 
-  const readySelected = selected.filter((id) => {
-    const p = prospects.find((x) => x.id === id);
-    return p && getDisplayStatus(p) === "ready";
-  });
-
   const readyCount = prospects.filter((p) => getDisplayStatus(p) === "ready").length;
 
   return (
@@ -244,23 +208,6 @@ export default function ProspectsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {(selected.length > 0 ? readySelected.length : readyCount) > 0 && (
-            <Button
-              variant="outline"
-              className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 gap-2"
-              onClick={() => bulkPush(selected.length > 0 ? selected : undefined)}
-              disabled={bulkPushing}
-            >
-              {bulkPushing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              {bulkPushing
-                ? "Pushing..."
-                : `Push ${selected.length > 0 ? readySelected.length : readyCount} to Instantly`}
-            </Button>
-          )}
           <Button
             className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
             onClick={() => fileInputRef.current?.click()}
@@ -382,19 +329,19 @@ export default function ProspectsPage() {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {status === "ready" && (
+                  {status === "failed" && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="w-8 h-8 p-0 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
-                      onClick={() => pushOne(p.id)}
-                      disabled={pushingIds.has(p.id)}
-                      title="Push to Instantly"
+                      className="w-8 h-8 p-0 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                      onClick={() => retryScrape(p.id)}
+                      disabled={retryingIds.has(p.id)}
+                      title="Retry scrape"
                     >
-                      {pushingIds.has(p.id) ? (
+                      {retryingIds.has(p.id) ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
-                        <Send className="w-3.5 h-3.5" />
+                        <RefreshCw className="w-3.5 h-3.5" />
                       )}
                     </Button>
                   )}
