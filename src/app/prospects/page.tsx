@@ -112,12 +112,13 @@ export default function ProspectsPage() {
       const now = Date.now();
       const STUCK_MS = 2 * 60 * 1000;
 
-      // Actively in-progress = marked scraping/generating and updated within last 2 minutes
-      const isActivePipeline = fresh.some(
+      // Count how many are actively in-progress (updated within last 2 minutes)
+      const activePipelineCount = fresh.filter(
         (p) =>
           (p.scrapeStatus === "scraping" || p.generateStatus === "generating") &&
           now - new Date(p.updatedAt).getTime() < STUCK_MS
-      );
+      ).length;
+      const MAX_CONCURRENT = 10; // 2 batches of 5 running simultaneously
 
       const pendingIds = fresh
         .filter((p) => p.scrapeStatus === "pending" && p.websiteUrl)
@@ -143,7 +144,7 @@ export default function ProspectsPage() {
 
       const idsToProcess = [...new Set([...pendingIds, ...stuckIds, ...needsCatchup])];
 
-      if (!isActivePipeline && idsToProcess.length > 0) {
+      if (activePipelineCount < MAX_CONCURRENT && idsToProcess.length > 0) {
         fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
