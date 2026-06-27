@@ -112,7 +112,8 @@ export default function ProspectsPage() {
       const now = Date.now();
       const STUCK_MS = 2 * 60 * 1000;
 
-      const MAX_CONCURRENT = 10; // allow 2 batches of 5 in parallel
+      const MAX_CONCURRENT_SCRAPE = 5;  // 1 batch — keeps Jina happy
+      const MAX_CONCURRENT_GENERATE = 10; // 2 batches — Claude handles it fine
 
       // Active counts per stage
       const activeScraping = fresh.filter(
@@ -139,7 +140,7 @@ export default function ProspectsPage() {
 
       // Scrape: fire when capacity available
       const idsToScrape = [...pendingIds, ...stuckScrapeIds];
-      if (activeScraping < MAX_CONCURRENT && idsToScrape.length > 0) {
+      if (activeScraping < MAX_CONCURRENT_SCRAPE && idsToScrape.length > 0) {
         fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -148,7 +149,7 @@ export default function ProspectsPage() {
       }
 
       // Generate: fire independently when capacity available
-      if (activeGenerating < MAX_CONCURRENT && needsGeneration) {
+      if (activeGenerating < MAX_CONCURRENT_GENERATE && needsGeneration) {
         fetch("/api/generate", { method: "POST" });
       }
     }, 2000);

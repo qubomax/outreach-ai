@@ -44,9 +44,10 @@ export async function POST(req: NextRequest) {
     .set({ scrapeStatus: 'scraping', updatedAt: new Date() })
     .where(inArray(prospects.id, eligible.map((p) => p.id)));
 
-  // Scrape all in parallel
+  // Scrape with small stagger between requests to reduce Jina rate limits
   await Promise.all(
-    eligible.map(async (p) => {
+    eligible.map(async (p, i) => {
+      await new Promise((r) => setTimeout(r, i * 500)); // 0, 500, 1000, 1500, 2000ms
       try {
         const text = await scrapeWebsite(p.websiteUrl!);
         await db
