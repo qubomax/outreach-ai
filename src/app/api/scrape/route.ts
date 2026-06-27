@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { prospects } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { scrapeWebsite } from '@/lib/jina';
+import { scrapeWebsite } from '@/lib/scraper';
 import { getAuthUserId } from '@/lib/auth';
 
 export const maxDuration = 60;
@@ -44,10 +44,9 @@ export async function POST(req: NextRequest) {
     .set({ scrapeStatus: 'scraping', updatedAt: new Date() })
     .where(inArray(prospects.id, eligible.map((p) => p.id)));
 
-  // Scrape with small stagger between requests to reduce Jina rate limits
+  // Scrape all in parallel — direct fetch, no external rate limits
   await Promise.all(
-    eligible.map(async (p, i) => {
-      await new Promise((r) => setTimeout(r, i * 500)); // 0, 500, 1000, 1500, 2000ms
+    eligible.map(async (p) => {
       try {
         const text = await scrapeWebsite(p.websiteUrl!);
         await db
