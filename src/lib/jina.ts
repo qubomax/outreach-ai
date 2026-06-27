@@ -4,13 +4,12 @@ export async function scrapeWebsite(url: string): Promise<string> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const res = await fetch(`https://r.jina.ai/${url}`, {
       headers: { Accept: 'text/plain', 'X-Return-Format': 'text' },
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (res.status === 429) {
-      // Rate limited — wait longer each retry
-      const delay = (attempt + 1) * 2000;
-      await new Promise((r) => setTimeout(r, delay));
+      // Rate limited — short wait then retry
+      await new Promise((r) => setTimeout(r, 1000));
       continue;
     }
 

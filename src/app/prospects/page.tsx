@@ -112,44 +112,44 @@ export default function ProspectsPage() {
       const now = Date.now();
       const STUCK_MS = 2 * 60 * 1000;
 
-      // Count how many are actively in-progress (updated within last 2 minutes)
-      const activePipelineCount = fresh.filter(
-        (p) =>
-          (p.scrapeStatus === "scraping" || p.generateStatus === "generating") &&
-          now - new Date(p.updatedAt).getTime() < STUCK_MS
+      const MAX_CONCURRENT = 10; // allow 2 batches of 5 in parallel
+
+      // Active counts per stage
+      const activeScraping = fresh.filter(
+        (p) => p.scrapeStatus === "scraping" && now - new Date(p.updatedAt).getTime() < STUCK_MS
       ).length;
-      const MAX_CONCURRENT = 10; // 2 batches of 5 running simultaneously
+      const activeGenerating = fresh.filter(
+        (p) => p.generateStatus === "generating" && now - new Date(p.updatedAt).getTime() < STUCK_MS
+      ).length;
+
+      // Stuck in scraping/generating > 2 minutes — pass to scrape route as pending
+      const stuckScrapeIds = fresh
+        .filter(
+          (p) => p.scrapeStatus === "scraping" && now - new Date(p.updatedAt).getTime() >= STUCK_MS
+        )
+        .map((p) => p.id);
 
       const pendingIds = fresh
         .filter((p) => p.scrapeStatus === "pending" && p.websiteUrl)
         .map((p) => p.id);
 
-      // Stuck = in scraping/generating state but not updated in > 2 minutes
-      const stuckIds = fresh
-        .filter(
-          (p) =>
-            (p.scrapeStatus === "scraping" || p.generateStatus === "generating") &&
-            now - new Date(p.updatedAt).getTime() >= STUCK_MS
-        )
-        .map((p) => p.id);
+      const needsGeneration = fresh.some(
+        (p) => p.scrapeStatus === "scraped" && p.generateStatus === "pending"
+      );
 
-      // Also pick up any that got scraped but generation failed (catch-up)
-      const needsCatchup = fresh
-        .filter(
-          (p) =>
-            p.scrapeStatus === "scraped" &&
-            (p.generateStatus === "pending" || p.generateStatus === "failed")
-        )
-        .map((p) => p.id);
-
-      const idsToProcess = [...new Set([...pendingIds, ...stuckIds, ...needsCatchup])];
-
-      if (activePipelineCount < MAX_CONCURRENT && idsToProcess.length > 0) {
+      // Scrape: fire when capacity available
+      const idsToScrape = [...pendingIds, ...stuckScrapeIds];
+      if (activeScraping < MAX_CONCURRENT && idsToScrape.length > 0) {
         fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prospectIds: idsToProcess }),
+          body: JSON.stringify({ prospectIds: idsToScrape }),
         });
+      }
+
+      // Generate: fire independently when capacity available
+      if (activeGenerating < MAX_CONCURRENT && needsGeneration) {
+        fetch("/api/generate", { method: "POST" });
       }
     }, 2000);
 
